@@ -4,6 +4,7 @@ import numpy as np
 
 from . import params as P
 from .pdf import text_width
+from .pieces import SEAM_SIZE
 
 CUT_W = 0.18          # cut lines (also what the PDF re-measure check looks for)
 FOLD_W = 0.16
@@ -11,20 +12,12 @@ CAL_W = 0.3           # calibration square
 LEGEND_W = 0.2        # legend samples (kept apart from real cut lines)
 VALLEY = (2.4, 1.4)
 MOUNTAIN = (3.0, 1.0, 0.5, 1.0)
-TAB_FILL = (0.86, 0.86, 0.86)
 INK = (0, 0, 0)
 GREY = (0.35, 0.35, 0.35)
 ACCENT = (0.0, 0.33, 0.55)
 
 
 def draw_piece(pg, pc):
-    for tb in pc.tabs:
-        poly = tb["poly"]
-        pg.polyline(poly, closed=True, fill=TAB_FILL, stroke=False)
-        # the base of a tab is a fold, its other three sides are cuts
-        pg.line(poly[0], poly[1], FOLD_W, INK, VALLEY)
-        for k in (1, 2, 3):
-            pg.line(poly[k], poly[(k + 1) % 4], CUT_W, INK)
     for c in pc.cuts:
         pg.line(c["a"], c["b"], CUT_W, INK)
     for f in pc.folds:
@@ -67,14 +60,10 @@ def footer(pg, note="CUT PATTERN - ACTUAL SIZE"):
     pg.text("this bar must measure exactly 100 mm", (x + 103, y + 11.2), 2.4, bold=True, anchor="start")
     lx, ly = x, y + 5.6
     pg.line((lx, ly), (lx + 8, ly), LEGEND_W, INK)
-    pg.text("cut", (lx + 9.5, ly), 2.3, anchor="start")
-    pg.line((lx + 18, ly), (lx + 26, ly), FOLD_W, INK, VALLEY)
-    pg.text("valley fold (towards you)", (lx + 27.5, ly), 2.3, anchor="start")
-    pg.line((lx + 64, ly), (lx + 72, ly), FOLD_W, INK, MOUNTAIN)
-    pg.text("mountain fold (away)", (lx + 73.5, ly), 2.3, anchor="start")
-    pg.polyline([(lx + 105, ly - 1.4), (lx + 114, ly - 1.4), (lx + 112, ly + 1.4), (lx + 107, ly + 1.4)],
-                closed=True, fill=TAB_FILL, width=LEGEND_W)
-    pg.text("glue tab: goes under the edge with the same number", (lx + 115.5, ly), 2.3, anchor="start")
+    pg.text("cut straight down, blade upright", (lx + 9.5, ly), 2.3, anchor="start")
+    pg.text("12", (lx + 62, ly), SEAM_SIZE, color=GREY)
+    pg.text("edges with the same number are glued together, outer corners touching",
+            (lx + 65.5, ly), 2.3, anchor="start")
     pg.text("Print at 100% / Actual size. Printed side = INSIDE of the helmet.",
             (lx, y + 1.0), 2.3, anchor="start", color=GREY)
     pg.text(note, (P.PAGE_W - P.MARGIN, y + 1.0), 2.4, bold=True, anchor="end", color=ACCENT)

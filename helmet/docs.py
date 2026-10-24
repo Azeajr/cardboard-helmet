@@ -4,21 +4,28 @@ import math
 import numpy as np
 
 from . import params as P
+from . import geom2d as g2
 from . import sheets
 from .pdf import text_width
 from .sheets import INK, GREY, ACCENT
+from .model import column_names
 
 RED = (0.70, 0.16, 0.13)
 GREEN = (0.10, 0.48, 0.22)
 
 
 def pivot_post():
-    """(grip, post): the thickness a Chicago screw clamps (side plate, E-SIDE,
-    washer, arm, E-DISC; the cap sits inside the hollow E-RINGs) and the post
+    """(grip, post): the thickness a Chicago screw clamps (washer, side plate,
+    washer, arm, washer; the cap sits inside the hollow E-RING) and the post
     length to buy, a whole millimetre at least 0.5 mm shorter so tightening
     squeezes the board and the faceplate holds its angle."""
-    grip = 4 * P.BOARD + P.PIVOT_WASHER
+    grip = 2 * P.BOARD + 3 * P.PIVOT_WASHER
     return grip, math.floor(grip - 0.5)
+
+
+def board_area(pieces):
+    """Total panel area to cut, in square metres (slots not subtracted)."""
+    return sum(abs(g2.area(poly)) * pc.count for pc in pieces for poly in pc.poly.values()) / 1e6
 
 
 def wrap(text, size, width, bold=False):
@@ -138,18 +145,18 @@ def piece_layers(d, pieces, open_angle=0.0, with_overlays=False):
 
 
 # --- pages ----------------------------------------------------------------------
-def cover(pdf, d, renders, checks, total, n_sheets):
+def cover(pdf, d, pieces, renders, checks, total, n_sheets):
     pg = pdf.page()
     x0, W = P.MARGIN, P.PAGE_W - 2 * P.MARGIN
     top = P.PAGE_H - P.MARGIN
     pg.text("CARDBOARD HELMET", (x0, top - 8), 8.0, bold=True, anchor="start", vcenter=False)
     pg.text(f"1 / {total}", (P.PAGE_W - P.MARGIN, top - 4), 3.2, bold=True, anchor="end", color=ACCENT)
-    pg.text("Flip-up faceplate on ear pivots  |  numbered glue tabs  |  full-size stencils from a 3D model",
+    pg.text("Flip-up faceplate on ear pivots  |  flat panels, numbered edges  |  full-size stencils from a 3D model",
             (x0, top - 14), 3.2, anchor="start", vcenter=False, color=GREY)
     s = d.summary()
     pg.text(f"Fitted to: forehead {P.HEAD_CIRCUMFERENCE / 10:.1f} cm around, chin-over-top-to-nape "
-            f"{P.CHIN_TOP_NAPE / 10:.1f} cm, {P.BOARD} mm board. Outside: about "
-            f"{2 * (d.arm_x + 3 * P.BOARD):.0f} mm wide.",
+            f"{P.CHIN_TOP_NAPE / 10:.1f} cm, {P.BOARD:g} mm board. Outside: about "
+            f"{2 * (d.arm_x + P.BOARD):.0f} mm wide.",
             (x0, top - 20), 3.0, anchor="start", vcenter=False)
     img_w = (W - 6) / 2
     y_img = top - 26 - img_w
@@ -171,13 +178,16 @@ def cover(pdf, d, renders, checks, total, n_sheets):
     yl = heading(pg, x0, yl, "2. WHAT YOU NEED")
     grip, post = pivot_post()
     yl = para(pg, x0, yl, colw,
-              f"- {P.BOARD} mm chipboard (mat board / sketch-pad backing): {n_sheets} Letter-size pieces\n"
-              "- Glue stick or spray adhesive (to stick the printouts on)\n"
-              "- PVA or hot glue for the tabs; craft knife, steel ruler, cutting mat\n"
-              "- Empty ballpoint pen for scoring\n"
-              f"- 2 Chicago screws (binding posts), flat heads: {P.PIVOT_HOLE:.0f} mm diameter, "
-              f"{post} mm post (shorter than the {grip:g} mm they clamp, so they can be tightened)\n"
-              f"- 2 washers: {P.PIVOT_HOLE:.0f} mm hole, {P.PIVOT_WASHER:g} mm thick\n"
+              f"- {P.BOARD:g} mm double-wall corrugated cardboard: about {board_area(pieces):.2f} m\u00b2 of "
+              "panels plus offcuts (large appliance or moving boxes)\n"
+              f"- Glue stick or spray adhesive (to stick the {n_sheets} stencil pages on)\n"
+              "- Hot glue gun and plenty of sticks; masking tape\n"
+              "- Craft knife with fresh blades, steel ruler, cutting mat\n"
+              f"- 2 Chicago screws (binding posts), flat heads: {P.PIVOT_HOLE:g} mm diameter, "
+              f"{post} mm post (shorter than the {grip:g} mm they clamp, so they can be tightened); "
+              "removable thread locker\n"
+              f"- 6 fender washers for {P.PIVOT_HOLE:g} mm screws: about {P.PIVOT_WASHER_D:g} mm across, "
+              f"{P.PIVOT_WASHER:g} mm thick\n"
               "- Optional: thin foam for padding (up to 8 mm keeps the fit)")
     xr = x0 + colw + 8
     yr = heading(pg, xr, y, "3. CHECKED ON THE 3D MODEL BEFORE PRINTING")
@@ -192,34 +202,31 @@ def cover(pdf, d, renders, checks, total, n_sheets):
 
 STEPS = [
     ("Stick, then cut",
-     "Glue each printout onto board with the printed side up. The printed side becomes the INSIDE of the "
-     "helmet, so the outside stays clean for paint. Cut every solid line, including the three outer sides "
-     "of each grey tab, the eye and mouth slots and the pivot holes."),
-    ("Score and pre-fold",
-     "Dashed lines are valley folds: run an empty ballpoint along them on the printed side and fold "
-     "towards you (printed side inside the fold). Dash-dot lines are mountain folds: score lightly with "
-     "the knife (about a third of the way through) and fold away from you. Fold the base of every tab."),
-    ("Glue tabs",
-     "Every seam has a number printed on both pieces. The piece with the grey tab goes UNDER the edge "
-     "with the same number: glue the tab, slide it under, press from outside until set. Edges meet flush."),
-    ("Shell strips",
-     "Join S-C-1, S-C-2 and S-C-3 into the centre strip (front at S-C-1). Add S-R1 and S-L1 strips on "
-     "each side, then R2/L2, then R3/L3, working front to back. Each strip's tabs lie along its inner "
-     "edge. Finish with the side plates S-SIDE-R and S-SIDE-L."),
+     "Glue each printout onto the board with the printed side up. The printed side becomes the INSIDE of the "
+     "helmet, so the outside stays clean for paint. Cut every solid line in several light passes with the "
+     "blade held upright, so the edges come out square. Cut the eye and mouth slots and the pivot holes too."),
+    ("How the joints work",
+     "Every edge has a number, and the edge with the same number on another panel is its partner. Hold the "
+     "two panels printed side down with those edges touching and tape along the seam on the outside. Fold "
+     "them away from the tape: the outer corners stay together and a V opens on the inside. Fill it with hot glue."),
+    ("Shell",
+     "Join the centre panels S-C-1 to S-C-{n} front to back. Add the S-R1 and S-L1 panels alongside{shell_out}, "
+     "then the side plates S-SIDE-R and S-SIDE-L. Each panel sets its neighbours' angles, so the shape locks "
+     "in as the rows close up."),
     ("Try the shell on",
      "Before going further, put the shell on. There should be about a finger's width all round. The "
      "front edge sits just above your brows."),
     ("Faceplate",
-     "Build F-C, then F-R1 and F-L1, F-R2 and F-L2 (the eye slots line up across the seam), F-R3 and "
-     "F-L3, then glue the pivot arms F-ARM-R and F-ARM-L onto the outer strips."),
+     "Join F-C-1 to F-C-{m}, then the F-R1 and F-L1 panels (with the eye slots){face_out}, then the pivot "
+     "arms F-ARM-R and F-ARM-L."),
     ("Pivots",
-     "Glue an E-SIDE disc outside each side plate and an E-DISC outside each arm, holes aligned; add two "
-     "E-RINGs on each E-DISC. Push a Chicago screw from inside through side plate, E-SIDE, washer, arm "
-     "and E-DISC, and screw on the cap inside the rings. Tighten until the faceplate stays where you put it."),
+     "Put a washer on a Chicago screw post and push it from the inside through the side plate. Add a washer, "
+     "the arm and a washer, then screw on the cap with a drop of thread locker. Tighten until it bottoms out: "
+     "that is as tight as it goes, and it stops before it crushes the board."),
     ("Overlays and finish",
-     "Glue O-BROW, O-CHEEK and O-CHIN onto the faceplate and O-CREST along the back centre strip "
-     "(positions are shown on the next page). Seal with PVA or primer, then paint. Swing the faceplate "
-     "fully open and closed to check nothing rubs."),
+     "Glue an E-RING round each screw cap, then the overlays (positions on the next page). Tape over the cut "
+     "edges so the flutes don't show, prime, then paint. Swing the faceplate fully open and closed to check "
+     "nothing rubs."),
 ]
 
 
@@ -230,7 +237,11 @@ def instructions(pdf, d, pieces, renders, page_no, total):
                   "Read once before cutting. Piece names are printed on every stencil.")
     y = P.PAGE_H - P.MARGIN - P.HEADER_H - 6
     colw = W * 0.56
+    outwards = lambda g, p: "".join(f", then {p}-R{k} and {p}-L{k}" for k in range(2, (len(g.xs) - 2) // 2 + 1))
+    rows = {"n": len(d.shell_grid.phis) - 1, "m": len(d.face_grid.phis) - 1,
+            "shell_out": outwards(d.shell_grid, "S"), "face_out": outwards(d.face_grid, "F")}
     for k, (title, text) in enumerate(STEPS, 1):
+        text = text.format(**rows)
         pg.text(f"{k}", (x0 + 2.5, y - 1.5), 5.0, bold=True, color=ACCENT)
         pg.text(title.upper(), (x0 + 9, y), 3.1, bold=True, anchor="start", vcenter=False)
         y = para(pg, x0 + 9, y - 4.6, colw - 9, text, size=2.75, lead=1.4) - 3.0
@@ -247,35 +258,38 @@ def instructions(pdf, d, pieces, renders, page_no, total):
             yi -= wr + 3
     # pivot stack
     yi -= 4
-    pg.text("PIVOT STACK (section through the ear disc)", (xr, yi), 2.8, bold=True, anchor="start",
+    grip, post = pivot_post()
+    pg.text("PIVOT STACK (section through the pivot)", (xr, yi), 2.8, bold=True, anchor="start",
             vcenter=False, color=ACCENT)
-    yi -= 6
-    layers = [("side plate", P.BOARD, (0.8, 0.3, 0.26)), ("E-SIDE", P.BOARD, (0.8, 0.3, 0.26)),
-              ("washer", P.PIVOT_WASHER, (0.6, 0.6, 0.62)), ("arm", P.BOARD, (0.86, 0.72, 0.4)),
-              ("E-DISC", P.BOARD, (0.86, 0.72, 0.4)), ("E-RING x2", 2 * P.BOARD, (0.86, 0.72, 0.4))]
-    sc = 3.2
-    xx = xr + 4
+    pg.text(f"Chicago screw: {post} mm post, clamps {grip:g} mm", (xr, yi - 4.2), 2.3, anchor="start",
+            vcenter=False, color=GREY)
+    yi -= 12
+    steel = (0.6, 0.6, 0.62)
+    layers = [("washer", P.PIVOT_WASHER, steel), ("side plate", P.BOARD, (0.8, 0.3, 0.26)),
+              ("washer", P.PIVOT_WASHER, steel), ("arm", P.BOARD, (0.86, 0.72, 0.4)),
+              ("washer", P.PIVOT_WASHER, steel), ("E-RING", P.BOARD, (0.86, 0.72, 0.4))]
+    sc = 2.6
+    x_in = xr + 4 + P.PIVOT_HEAD * sc
+    xx = x_in
     hgt = 26.0
-    vs = hgt / (2 * P.EAR_DISC_R)                   # vertical scale across the ear disc
+    vs = hgt / (2 * P.EAR_DISC_R)                   # vertical scale across the arm's round end
     ring = (P.EAR_DISC_R - P.EAR_RING_IN) * vs
     for name, t, col in layers:
-        if name.startswith("E-RING"):               # hollow: the cap sits in the middle
+        h = P.PIVOT_WASHER_D * vs if name == "washer" else hgt
+        if name == "E-RING":                        # hollow: the cap sits in the middle
             pg.rect(xx, yi - ring, t * sc, ring, fill=col, width=0.1)
             pg.rect(xx, yi - hgt, t * sc, ring, fill=col, width=0.1)
         else:
-            pg.rect(xx, yi - hgt, t * sc, hgt, fill=col, width=0.1)
+            pg.rect(xx, yi - hgt / 2 - h / 2, t * sc, h, fill=col, width=0.1)
         pg.text(name, (xx + t * sc / 2, yi - hgt - 3.5), 2.1, angle=-60, anchor="start")
         xx += t * sc
-    grip, post = pivot_post()
-    x_in, x_out = xr + 4, xr + 4 + grip * sc
-    head, hh, steel = 1.2 * sc, 12.0 * vs, (0.5, 0.5, 0.52)
-    pg.rect(x_in, yi - hgt / 2 - 1.2, x_out - x_in, 2.4, fill=steel, width=0.1)
-    pg.rect(x_in - head, yi - hgt / 2 - hh / 2, head, hh, fill=steel, width=0.1)
-    pg.rect(x_out, yi - hgt / 2 - hh / 2, head, hh, fill=steel, width=0.1)
-    pg.text(f"Chicago screw, {post} mm post", (xx + 4, yi - hgt / 2 + 1.6), 2.3, anchor="start")
-    pg.text(f"clamps {grip:g} mm", (xx + 4, yi - hgt / 2 - 1.6), 2.1, anchor="start", color=GREY)
+    x_out = x_in + grip * sc
+    head, hh, dark = P.PIVOT_HEAD * sc, 12.0 * vs, (0.45, 0.45, 0.47)
+    pg.rect(x_in, yi - hgt / 2 - 1.2, x_out - x_in, 2.4, fill=dark, width=0.1)
+    pg.rect(x_in - head, yi - hgt / 2 - hh / 2, head, hh, fill=dark, width=0.1)
+    pg.rect(x_out, yi - hgt / 2 - hh / 2, head, hh, fill=dark, width=0.1)
     pg.text("inside (ear)", (xr - 1, yi + 2.5), 2.1, anchor="start", color=GREY)
-    pg.text("outside", (xx - 2, yi + 2.5), 2.1, anchor="end", color=GREY)
+    pg.text("outside", (xx, yi + 2.5), 2.1, anchor="end", color=GREY)
     sheets.footer(pg, "GUIDE - DO NOT CUT")
     return pg
 
@@ -303,9 +317,13 @@ def piece_map(pdf, d, pieces, page_no, total):
         up = (0, -1, 0) if title.startswith("TOP") else (0, 0, 1)
         draw_view(pg, layers, dvec, up, (cx, cy, cw, ch - 2))
         pg.text(title, (cx + cw / 2, cy + ch + 1.5), 3.0, bold=True, color=ACCENT)
-    # overlay positions note
-    pg.text("Overlays: O-BROW-L/R along the faceplate top band, O-CHEEK-L/R below the eye slots on F-L2/F-R2, "
-            "O-CHIN at the bottom of F-C, O-CREST-1/2 on the back centre strip.",
-            (x0, bottom + 1), 2.4, anchor="start", vcenter=False, color=GREY)
+    # overlay positions
+    spots = []
+    for name, gname, poly in d.overlays:
+        g = d.face_grid if gname == "face" else d.shell_grid
+        i, j = g.cell_of(*np.mean(np.asarray(poly, float), axis=0))
+        spots.append(f"{name} on {'F' if gname == 'face' else 'S'}-{column_names(len(g.xs) - 1)[i]}-{j + 1}")
+    para(pg, x0, bottom + 7, W, "Overlays (centred on their panel): " + ", ".join(spots) + ".",
+         size=2.4, color=GREY)
     sheets.footer(pg, "GUIDE - DO NOT CUT")
     return pg

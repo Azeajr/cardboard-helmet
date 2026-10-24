@@ -1,13 +1,16 @@
 """Helmet geometry, sized around the head proxy.
 
-Shell: fold lines at x = +-15/45/75 run front-to-back over the head, rows of
-folds run around the pivot axis (an axis through both ear pivots). Flat side
+Shell: seams at x = +-SHELL_SEAMS_X run front-to-back over the head, rows of
+seams run around the pivot axis (an axis through both ear pivots). Flat side
 plates sit at x = +-SIDE_X. Between SHELL_FRONT_EDGE and the swing limit the
-shell profile is an exact circle about the pivot axis, so the faceplate,
-which stays outside that circle, can swing over it at any angle.
+shell profile's corners lie on a circle about the pivot axis, so the
+faceplate, which stays outside that circle, can swing over it at any angle.
 
 Faceplate: the same construction (scaled copies of one profile) with flat
-arms at x = +-ARM_X that pivot on the ear discs.
+arms at x = +-ARM_X that pivot on Chicago screws through the side plates.
+
+Every facet is its own flat panel of BOARD-thick cardboard. The meshes are the
+panels' outer surfaces; the board lies inside them.
 """
 
 import math
@@ -37,6 +40,11 @@ def _hull_profile(points_fu, phis):
             s = (p[0] * d[1] - p[1] * d[0]) / den
             if rho > 1e-9 and -1e-6 <= s <= 1 + 1e-6:
                 best = max(best, rho)
+        if best == 0.0:
+            # A ray along the hull's own edge from the origin (the outermost
+            # angle) misses every edge by rounding: take the farthest point on it.
+            on = np.abs(np.arctan2(hull[:, 1], hull[:, 0]) - a) < 1e-5
+            best = float(np.linalg.norm(hull[on], axis=1).max()) if on.any() else 0.0
         out.append(best)
     return np.array(out)
 
@@ -123,15 +131,16 @@ class Design:
         # Never lower than the chin, or the back edge stops you looking up.
         self.back_edge_z = max(self.nape[1] + P.BACK_EDGE_ABOVE_NAPE,
                                h.landmarks["menton"][2])
-        self.side_x = max(h.ear["x"][1] + P.EAR_CLEARANCE + P.BOARD,
+        # The screw head and its washer sit inside each side plate, over the ear.
+        self.side_x = max(h.ear["x"][1] + P.EAR_CLEARANCE + P.PIVOT_HEAD + P.PIVOT_WASHER + P.BOARD,
                           float(np.abs(h.cranium[:, 0]).max()) + P.CLEARANCE + P.BOARD)
-        self.arm_x = self.side_x + 2 * P.BOARD + P.PIVOT_WASHER
+        self.arm_x = self.side_x + P.PIVOT_WASHER + P.BOARD
         self.pivot = self._choose_pivot()
         self._profiles(self.pivot, final=True)
         self._scales()
-        self.shell_grid = Grid("shell", self._sym(P.SHELL_FOLDS_X, self.side_x),
+        self.shell_grid = Grid("shell", self._sym(P.SHELL_SEAMS_X, self.side_x),
                                self._sym_scales(self.a), self.shell_phis, self.shell_r, self.pivot)
-        self.face_grid = Grid("face", self._sym(P.FACE_FOLDS_X, self.arm_x),
+        self.face_grid = Grid("face", self._sym(P.FACE_SEAMS_X, self.arm_x),
                               self._sym_scales(self.b), self.face_phis, self.face_r, self.pivot)
         self.shell = self._build_shell()
         self.faceplate = self._build_faceplate()
@@ -163,7 +172,7 @@ class Design:
         cx, cphi, cneed = req["cran"]
         front = P.SHELL_FRONT_EDGE
         self.sweep_end = P.FACE_ROWS[0] + P.SWING_ANGLE + 3.0
-        band = cx <= P.SHELL_FOLDS_X[0]
+        band = cx <= P.SHELL_SEAMS_X[0]
         in_sweep = band & (cphi >= front - 3) & (cphi <= self.sweep_end + 3)
         # Vertices sit on the circle; chords between them dip inside it.
         R0 = float(cneed[in_sweep].max()) / math.cos(math.radians(P.SHELL_ROW_STEP / 2))
@@ -189,14 +198,14 @@ class Design:
         # Faceplate: outside the swing circle and clear of the face.
         fphis = np.array(P.FACE_ROWS, float)
         fx, fphi, fneed = req["face"]
-        fband = fx <= P.FACE_FOLDS_X[0]
+        fband = fx <= P.FACE_SEAMS_X[0]
         step = max(abs(a - b) for a, b in zip(fphis, fphis[1:]))
         r_sw = (R0 + P.BOARD + P.SWING_GAP + 0.3) / math.cos(math.radians(step / 2))
         sel = fband & (fphi >= fphis[-1] - 3) & (fphi <= fphis[0] + 3)
         fpts = np.vstack([_fu(fneed[sel], fphi[sel]), _fu(np.full(fphis.size, r_sw), fphis)])
         fr = _hull_profile(fpts, fphis)
         fr = _inflate(fphis, fr, fphi[fband], fneed[fband])
-        # Re-hull so every faceplate fold bends the same way (no dents).
+        # Re-hull so every faceplate seam turns the same way (no dents).
         fr = _hull_profile(_fu(fr, fphis), fphis)
         d_min = chord_min_dist(fphis, fr)
         if d_min < R0 + P.BOARD + P.SWING_GAP:
@@ -227,7 +236,7 @@ class Design:
         req = self.req
         sp, sr = self.shell_phis, self.shell_r
         lo, hi = sp[0], sp[-1]
-        knots_s = np.array(P.SHELL_FOLDS_X + (self.side_x,))
+        knots_s = np.array(P.SHELL_SEAMS_X + (self.side_x,))
         xs, need = [], []
         for key in ("cran", "ears"):
             x, phi, nd = req[key]
@@ -235,21 +244,21 @@ class Design:
             xs.append(x[m])
             need.append(nd[m] / profile_radius(sp, sr, phi[m]))
         xs, need = np.concatenate(xs), np.concatenate(need)
-        # The side plate carries the pivot disc and balances the faceplate arm.
+        # The side plate carries the pivot and balances the faceplate arm.
         xs = np.append(xs, knots_s[-1])
-        need = np.append(need, max((P.SIDE_DISC_R + 15.0) / sr.min(), P.SIDE_PLATE_R / self.R0))
+        need = np.append(need, max((P.SIDE_FRONT_R + 15.0) / sr.min(), P.SIDE_PLATE_R / self.R0))
         a = _fit_scales(knots_s, xs, need)
         self.a = a
         self.knots_s = knots_s
 
         fp, fr = self.face_phis, self.face_r
-        knots_f = np.array(P.FACE_FOLDS_X + (self.arm_x,))
+        knots_f = np.array(P.FACE_SEAMS_X + (self.arm_x,))
         x, phi, nd = req["face"]
         m = (phi >= min(fp)) & (phi <= max(fp))
         fx = [x[m]]
         fneed = [nd[m] / profile_radius(fp, fr, phi[m])]
         # Swing: the faceplate's inner surface must pass outside the shell.
-        xx = np.linspace(0, self.side_x + P.BOARD + 0.5, 300)
+        xx = np.linspace(0, self.side_x + P.BOARD, 300)
         a_at = np.interp(np.clip(xx, knots_s[0], knots_s[-1]), knots_s, a)
         shell_top = a_at * self.R0
         # Where the shell slopes sideways the perpendicular gap is the radial
@@ -259,16 +268,19 @@ class Design:
         slope = np.abs(a[k + 1] - a[k]) * self.R0 / (knots_s[k + 1] - knots_s[k])
         slope = np.where(xx < knots_s[0], 0.0, slope)
         margin = (P.BOARD + P.SWING_GAP + 0.4) * np.sqrt(1 + slope ** 2)
-        disc = (xx > self.side_x - 1e-9)
-        shell_top = np.where(disc, np.maximum(a[-1] * self.R0, P.SIDE_DISC_R), shell_top)
+        need = np.where(xx <= self.side_x, shell_top + margin, -np.inf)
+        # A steep faceplate panel's inner surface lies up to BOARD further in
+        # (towards smaller x) than its outer surface, so clear the shell over
+        # that whole reach.
+        need = np.array([need[(xx >= v - P.BOARD) & (xx <= v)].max() for v in xx])
         fx.append(xx)
-        fneed.append((shell_top + margin) / self.face_dmin)
+        fneed.append(need / self.face_dmin)
         self.b = _fit_scales(knots_f, np.concatenate(fx), np.concatenate(fneed))
         self.knots_f = knots_f
 
     @staticmethod
-    def _sym(folds, outer):
-        right = list(folds) + [outer]
+    def _sym(seams, outer):
+        right = list(seams) + [outer]
         return [-v for v in reversed(right)] + right
 
     @staticmethod
@@ -301,7 +313,7 @@ class Design:
                 pts.append(point_at(self.pivot, x, end_r + (jaw_r - end_r) * w,
                                     g.phis[-1] + (notch - g.phis[-1]) * t))
             for phi in np.linspace(notch, 360.0 + g.phis[0], 14):
-                pts.append(point_at(self.pivot, x, P.SIDE_DISC_R, phi))
+                pts.append(point_at(self.pivot, x, P.SIDE_FRONT_R, phi))
             sgn = math.copysign(1.0, x)
             m.add_face(pts, f"S-SIDE-{side}", lambda c, s=sgn: np.array([s, 0.0, 0.0]),
                        cell=None, plate=side)
@@ -326,8 +338,9 @@ class Design:
 
     # --- holes and overlays (param space: x in mm, phi in degrees) -----------
     def _holes(self):
-        eye = [(18.0, -3.5), (62.0, -0.5), (66.0, 5.0), (19.0, 2.5)]
-        mouth = [(-12.0, -30.5), (12.0, -30.5), (12.0, -27.0), (-12.0, -27.0)]
+        # Each slot sits inside one faceplate panel with board left all round it.
+        eye = [(22.0, -5.0), (62.0, -3.0), (66.0, 5.5), (23.0, 3.5)]
+        mouth = [(-8.0, -30.5), (8.0, -30.5), (8.0, -27.0), (-8.0, -27.0)]
         holes = {"faceplate": [], "shell": []}
         holes["faceplate"].append(("eye-L", eye))
         holes["faceplate"].append(("eye-R", [(-x, p) for x, p in eye][::-1]))
@@ -335,25 +348,26 @@ class Design:
         return holes
 
     def _overlays(self):
-        brow = [(2.0, 8.5), (84.0, 8.5), (90.0, 16.0), (2.0, 16.0)]
-        # Overlays stay inside one row band or one column strip, so they lie
-        # flat on the faceplate without slits.
-        cheek = [(48.0, -7.0), (72.0, -7.5), (72.0, -38.0), (60.0, -46.0), (48.0, -36.0)]
-        chin = [(-13.0, -58.5), (13.0, -58.5), (13.0, -45.0), (0.0, -42.5), (-13.0, -45.0)]
-        c0, c2 = self.sweep_end + 6.0, self.shell_phis[-1] - 5.0
-        c1 = (c0 + c2) / 2
-        crest_a = [(-11.0, c0), (11.0, c0), (11.0, c1 - 0.5), (-11.0, c1 - 0.5)]
-        crest_b = [(-11.0, c1 + 0.5), (11.0, c1 + 0.5), (11.0, c2), (-11.0, c2)]
+        # Overlays are board too, so each one lies flat on a single panel.
+        brow = [(18.0, 10.0), (70.0, 10.0), (73.0, 16.0), (18.0, 16.0)]
+        cheek = [(44.0, -16.0), (72.0, -16.0), (72.0, -30.0), (62.0, -35.0), (44.0, -28.0)]
+        chin = [(-10.0, -58.0), (10.0, -58.0), (10.0, -43.0), (0.0, -40.0), (-10.0, -43.0)]
         mir = lambda poly: [(-x, p) for x, p in poly][::-1]
-        return [
+        out = [
             ("O-BROW-L", "face", brow),
             ("O-BROW-R", "face", mir(brow)),
             ("O-CHEEK-L", "face", cheek),
             ("O-CHEEK-R", "face", mir(cheek)),
             ("O-CHIN", "face", chin),
-            ("O-CREST-1", "shell", crest_a),
-            ("O-CREST-2", "shell", crest_b),
         ]
+        # Crest: one plate per centre panel, behind where the open faceplate reaches.
+        ph = self.shell_phis
+        for j in range(len(ph) - 1):
+            lo, hi = max(ph[j], self.sweep_end + 6.0) + 2.0, ph[j + 1] - 2.0
+            if hi - lo >= 8.0:
+                k = sum(1 for o in out if o[0].startswith("O-CREST")) + 1
+                out.append((f"O-CREST-{k}", "shell", [(-11.0, lo), (11.0, lo), (11.0, hi), (-11.0, hi)]))
+        return out
 
     # --- summary ----------------------------------------------------------------
     def summary(self):

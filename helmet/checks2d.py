@@ -5,7 +5,6 @@ import re
 import subprocess
 import tempfile
 import os
-from collections import Counter
 import numpy as np
 
 from . import params as P
@@ -16,7 +15,8 @@ from .pdf import PT
 
 def unfold_checks(bodies, pieces, seams):
     """Every flattened face has exactly its 3D shape, every seam is cut on both
-    sides with one tab, and nothing overlaps inside a piece."""
+    sides at equal length and is a convex butt joint, nothing overlaps inside a
+    piece, and every slot leaves board all round it."""
     meshes = {b.mesh.name: b.mesh for b in bodies}
     worst_len = 0.0
     worst_ang = 0.0
@@ -32,18 +32,17 @@ def unfold_checks(bodies, pieces, seams):
                     worst_len = max(worst_len, abs(np.linalg.norm(p3[a] - p3[b]) - np.linalg.norm(poly[a] - poly[b])))
             # mirrored once: orientation must be reversed relative to the outside view
             worst_ang = max(worst_ang, 0.0 if g2.area(poly) > 0 else 1.0)
-        polys = [pc.poly[f] for f in pc.faces] + [t["poly"] for t in pc.tabs]
+        polys = [pc.poly[f] for f in pc.faces]
         for i in range(len(polys)):
             for j in range(i + 1, len(polys)):
                 if g2.polys_overlap(polys[i], polys[j]):
                     overlaps.append((pc.name, i, j))
-    # seams: each number cut on two pieces (or twice on one), lengths equal, one tab set
+    # seams: each number cut on two pieces, lengths equal, joint opens on the inside
     cut_len = {}
     for pc in pieces:
         for c in pc.cuts:
             if c["seam"] is not None:
                 cut_len.setdefault(c["seam"], []).append(float(np.linalg.norm(c["b"] - c["a"])))
-    tab_count = Counter(t["seam"] for pc in pieces for t in pc.tabs)
     bad_seams = []
     for s in seams:
         n = s["seam"]
@@ -54,12 +53,34 @@ def unfold_checks(bodies, pieces, seams):
             continue
         if abs(sum(lens) / 2 - s["length"] * sum(b - a for a, b in s["solid"])) > 1e-6:
             bad_seams.append((n, "lengths differ"))
-        need = 6.0 if len(s["solid"]) == 1 else 12.0   # same rule as the tab builder
-        if tab_count.get(n, 0) == 0 and s["length"] * max(b - a for a, b in s["solid"]) >= need:
-            bad_seams.append((n, "no glue tab"))
-    # every mesh edge accounted for: a fold inside one piece, a numbered seam, or a free edge
+        if not s["convex"]:
+            bad_seams.append((n, "concave: the boards would collide inside"))
+        elif s["gap"] > P.MAX_JOINT_GAP:
+            bad_seams.append((n, f"inside V {s['gap']:.1f} mm wide"))
     return dict(face_shape_error_mm=worst_len, orientation_errors=int(worst_ang), overlaps=overlaps,
-                seams=len(seams), bad_seams=bad_seams, tabs=sum(tab_count.values()))
+                seams=len(seams), bad_seams=bad_seams,
+                joint_angle_max=max(s["angle"] for s in seams), joint_gap_max=max(s["gap"] for s in seams),
+                slot_bridge_min=slot_bridge(pieces))
+
+
+def slot_bridge(pieces):
+    """Narrowest board (mm) between any slot and its panel's outline."""
+    best = math.inf
+    for pc in pieces:
+        if not pc.holes or pc.body == "flat":
+            continue
+        outline = [(c["a"], c["b"]) for c in pc.cuts]
+        for a, b in pc.holes:
+            for p in (a, b):
+                for c, e in outline:
+                    best = min(best, _seg_dist(p, c, e))
+    return best
+
+
+def _seg_dist(p, a, b):
+    d = b - a
+    t = np.clip(np.dot(p - a, d) / np.dot(d, d), 0.0, 1.0)
+    return float(np.linalg.norm(p - (a + t * d)))
 
 
 def page_checks(pages):
@@ -77,8 +98,8 @@ def page_checks(pages):
             for j in range(i + 1, len(boxes)):
                 a, b = boxes[i], boxes[j]
                 if (a[1] < b[2]).all() and (b[1] < a[2]).all():
-                    pa = [a[3].poly[f] for f in a[3].faces] + [t["poly"] for t in a[3].tabs]
-                    pb = [b[3].poly[f] for f in b[3].faces] + [t["poly"] for t in b[3].tabs]
+                    pa = [a[3].poly[f] for f in a[3].faces]
+                    pb = [b[3].poly[f] for f in b[3].faces]
                     if any(g2.polys_overlap(p, q, shrink=-1.0) for p in pa for q in pb):
                         clashes.append((k, a[0], b[0]))
     return dict(pages=len(pages), out_of_bounds=out_of_bounds, clashes=clashes)
@@ -92,10 +113,6 @@ def expected_cut_lengths(page):
             out.append(float(np.linalg.norm(c["b"] - c["a"])))
         for a, b in it.holes:
             out.append(float(np.linalg.norm(b - a)))
-        for t in it.tabs:
-            p = t["poly"]
-            for k in (1, 2, 3):
-                out.append(float(np.linalg.norm(p[(k + 1) % 4] - p[k])))
     return out
 
 
