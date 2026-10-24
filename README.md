@@ -44,3 +44,8 @@ Each surface is built from columns that are scaled copies of one profile around 
 ## Code map
 
 `helmet/head.py` head proxy · `design.py` sizing and meshes · `pieces.py` flattening, tabs, seam numbers · `model.py` how the meshes are split into pieces · `layout.py` page packing · `sheets.py`, `docs.py`, `pdf.py` PDF output · `checks3d.py`, `checks2d.py` verification · `blend.py` Blender scene and renders · `build.py` runs it all.
+
+## License
+
+- **Code** (`build.py`, `build.sh`, `helmet/`): [MIT](LICENSE).
+- **Design files** (everything in `out/`: the stencil PDF, `helmet.blend`, the renders and the reports): [Creative Commons Attribution 4.0 International (CC BY 4.0)](LICENSE-CC-BY-4.0.txt). You may share, adapt and use them, including commercially, as long as you credit Azeajr and link back to this repository.
