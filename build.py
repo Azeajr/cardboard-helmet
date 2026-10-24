@@ -37,16 +37,18 @@ def summarize(d, r3, r2, pagechk, pdfm):
     items.append(("Head fit", f"at least {gap:.1f} mm between your head and the inside of the helmet "
                   f"(target {P.CLEARANCE:.0f}); {c['crown_to_shell']:.0f} mm above the crown",
                   gap >= P.CLEARANCE - 1.5))
-    ear = c["ears_to_shell_min"][0]
-    items.append(("Ears", f"{ear:.1f} mm from the side plates", ear >= P.EAR_CLEARANCE - 0.5))
+    ear, screw = c["ears_to_shell_min"][0], c["ears_to_screw_min"][0]
+    items.append(("Ears", f"{ear:.1f} mm from the side plates, {screw:.1f} mm from the screw heads inside them",
+                  min(ear, screw) >= P.EAR_CLEARANCE - 0.5))
     fc = c["face_to_faceplate_min"][0]
     items.append(("Face", f"faceplate at least {fc:.1f} mm from your face (target {P.FACE_CLEARANCE:.0f}; "
                   f"nose {c['nose_tip_to_faceplate']:.0f}, chin {c['pogonion_to_faceplate']:.0f} mm)",
                   fc >= P.FACE_CLEARANCE - 1.0))
-    ok = not sw["intersections"] and sw["min_gap"] >= P.SWING_GAP - 0.3 and sw["min_head"] > 2.0
+    ok = (not sw["intersections"] and sw["min_gap"] >= P.SWING_GAP - 0.3
+          and sw["min_arm_gap"] >= P.PIVOT_WASHER - 0.05 and sw["min_head"] > 2.0)
     items.append(("Faceplate swing", f"tested at {sw['steps']} angles from closed to {P.SWING_ANGLE:.0f} deg: "
-                  f"no contact; tightest gap {sw['min_gap']:.1f} mm; never closer than {sw['min_head']:.0f} mm "
-                  f"to your head", ok))
+                  f"no contact; tightest gap {sw['min_gap']:.1f} mm (arms ride {sw['min_arm_gap']:.1f} mm off "
+                  f"the side plates on the washers); never closer than {sw['min_head']:.0f} mm to your head", ok))
     both = v["eye_l"]["straight_ahead"] and v["eye_r"]["straight_ahead"]
     hl = v["eye_l"]["horizontal"]
     vl = v["eye_l"]["vertical"]
@@ -65,9 +67,17 @@ def summarize(d, r3, r2, pagechk, pdfm):
                   plan < 0.01 and all(m["inconsistent_normals"] == 0 and m["nonmanifold_edges"] == 0
                                       for m in mc.values())))
     items.append(("Pieces match the model", f"every flattened panel within {r2['face_shape_error_mm']:.0e} mm of "
-                  f"its 3D shape; {r2['seams']} seams each cut on both sides with matching lengths; "
-                  f"{r2['tabs']} glue tabs", r2["face_shape_error_mm"] < 0.01 and not r2["bad_seams"]
-                  and not r2["overlaps"] and r2["orientation_errors"] == 0))
+                  f"its 3D shape; {r2['seams']} seams each cut on both sides with matching lengths",
+                  r2["face_shape_error_mm"] < 0.01 and not r2["overlaps"] and r2["orientation_errors"] == 0
+                  and not any(why in ("not cut on both sides", "lengths differ") for _, why in r2["bad_seams"])))
+    concave = [n for n, why in r2["bad_seams"] if why.startswith("concave")]
+    items.append(("Joints", f"every seam turns outwards (up to {r2['joint_angle_max']:.0f} deg), so square-cut "
+                  f"edges meet at the outer corner and leave a V of at most {r2['joint_gap_max']:.1f} mm inside "
+                  f"for hot glue (limit {P.MAX_JOINT_GAP:.0f})" if not concave else
+                  f"{len(concave)} seams turn inwards: the boards would collide", not concave
+                  and r2["joint_gap_max"] <= P.MAX_JOINT_GAP))
+    items.append(("Slots", f"eye and mouth slots leave at least {r2['slot_bridge_min']:.1f} mm of board to every "
+                  f"panel edge (limit {P.MIN_BRIDGE:.0f})", r2["slot_bridge_min"] >= P.MIN_BRIDGE - 0.05))
     items.append(("Pages", f"{pagechk['pages']} stencil pages; every piece inside the printable area, none touching",
                   not pagechk["out_of_bounds"] and not pagechk["clashes"]))
     if pdfm is not None:
@@ -85,7 +95,7 @@ def summarize(d, r3, r2, pagechk, pdfm):
 def write_pdf(d, pieces, pages, renders, items):
     total = 3 + len(pages)
     pdf = PDF(P.PAGE_W, P.PAGE_H, "Cardboard helmet - full-size stencils", "cardboard-helmet")
-    docs.cover(pdf, d, renders, items, total, len(pages))
+    docs.cover(pdf, d, pieces, renders, items, total, len(pages))
     docs.instructions(pdf, d, pieces, renders, 2, total)
     docs.piece_map(pdf, d, pieces, 3, total)
     sheets.stencil_pages(pdf, pages, 4, total)
@@ -100,7 +110,7 @@ def main():
     log("pieces")
     bodies, pieces, seams = model.build(d)
     groups = [("shell", lambda p: p.kind == "shell"), ("faceplate", lambda p: p.kind == "face"),
-              ("overlays and ear discs", lambda p: p.kind in ("overlay", "flat"))]
+              ("overlays and ear rings", lambda p: p.kind in ("overlay", "flat"))]
     pages = layout.pack(pieces, groups)
     log(f"{len(pieces)} pieces on {len(pages)} pages; checking flat pieces")
     r2 = checks2d.unfold_checks(bodies, pieces, seams)

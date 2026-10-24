@@ -18,19 +18,25 @@ def _bvh(verts, tris):
 
 
 def shell_parts(d):
-    """Shell mesh plus the pivot discs glued outside the side plates."""
+    """The shell mesh as triangles."""
     m = d.shell
-    verts = [np.asarray(v) for v in m.verts]
-    tris = list(m.triangles())
+    return [np.asarray(v) for v in m.verts], list(m.triangles())
+
+
+def screw_heads(d):
+    """Screw head plus washer inside each side plate (real solids, not board
+    surfaces), as triangles."""
+    verts, tris = [], []
+    t = P.PIVOT_WASHER + P.PIVOT_HEAD
     for sgn in (-1.0, 1.0):
-        x = sgn * (d.side_x + P.BOARD)
+        x_in = sgn * (d.side_x - P.BOARD)
         c = len(verts)
-        ring = [point_at(d.pivot, x, P.SIDE_DISC_R, a) for a in np.linspace(0, 360, 36, endpoint=False)]
-        verts += [np.array([x, d.pivot[0], d.pivot[1]])] + ring
+        for x in (x_in, x_in - sgn * t):
+            verts += [point_at(d.pivot, x, P.PIVOT_WASHER_D / 2, a) for a in np.linspace(0, 360, 36, endpoint=False)]
         for k in range(36):
-            a, b = c + 1 + k, c + 1 + (k + 1) % 36
-            # ring runs with increasing phi, which winds clockwise seen from +x
-            tris.append((c, b, a) if sgn > 0 else (c, a, b))
+            k2 = (k + 1) % 36
+            tris += [(c + k, c + k2, c + 36 + k2), (c + k, c + 36 + k2, c + 36 + k)]
+            tris += [(c, c + k, c + k2), (c + 36, c + 36 + k2, c + 36 + k)]
     return verts, tris
 
 
@@ -93,6 +99,8 @@ def clearance(d):
     out["head_to_helmet_min"] = (float(dmin[k]), h.cranium[k].tolist())
     de, _ = nearest(shell, h.ears)
     out["ears_to_shell_min"] = (float(de.min() - P.BOARD), h.ears[int(np.argmin(de))].tolist())
+    ds, _ = nearest(_bvh(*screw_heads(d)), h.ears)
+    out["ears_to_screw_min"] = (float(ds.min()), h.ears[int(np.argmin(ds))].tolist())
     dfa, _ = nearest(face, h.face)
     k = int(np.argmin(dfa))
     out["face_to_faceplate_min"] = (float(dfa[k] - P.BOARD), h.face[k].tolist())
@@ -107,12 +115,17 @@ def clearance(d):
 
 def swing(d, step=0.5):
     """Rotate the faceplate from closed to fully open: no intersection with the
-    shell, the board's inner surface keeps its gap, and the head is never hit."""
+    shell, the board's inner surface keeps its gap, and the head is never hit.
+    The flat arms ride on the washers, so their gap is measured on its own."""
     sv, st = shell_parts(d)
     shell = _bvh(sv, st)
     fm = d.faceplate
     ftris = fm.triangles()
-    inner = surface_samples(fm, spacing=2.5, inset=P.BOARD)
+    curved, arms = Mesh("curved"), Mesh("arms")
+    for f in fm.faces:
+        (arms if f.get("plate") else curved).add_face(fm.pts(f), f["id"])
+    inner = surface_samples(curved, spacing=2.5, inset=P.BOARD)
+    arm_inner = surface_samples(arms, spacing=2.5, inset=P.BOARD)
     # The board's inner surface as its own triangles (each face offset inward).
     iv, it = [], []
     for f in fm.faces:
@@ -124,7 +137,7 @@ def swing(d, step=0.5):
         for tri in fm.triangles_of(f):
             it.append(tuple(base + k[v] for v in tri))
     head = np.vstack([d.head.cranium, d.head.face])
-    worst_gap, worst_head, hits = math.inf, math.inf, []
+    worst_gap, worst_arm, worst_head, hits = math.inf, math.inf, math.inf, []
     per_angle = []
     for ang in np.arange(0.0, P.SWING_ANGLE + 1e-9, step):
         fv = rotate_open(fm.verts, d.pivot, ang)
@@ -137,12 +150,13 @@ def swing(d, step=0.5):
         # the board's inner surface to the shell is the air gap.
         dd, _ = nearest(shell, rotate_open(inner, d.pivot, ang))
         gap = float(dd.min())
+        da, _ = nearest(shell, rotate_open(arm_inner, d.pivot, ang))
         dh, _ = nearest(fb, head[::3])
         hd = float(dh.min() - P.BOARD)
-        worst_gap, worst_head = min(worst_gap, gap), min(worst_head, hd)
+        worst_gap, worst_arm, worst_head = min(worst_gap, gap), min(worst_arm, float(da.min())), min(worst_head, hd)
         per_angle.append((float(ang), gap, hd))
-    return dict(intersections=hits, min_gap=worst_gap, min_head=worst_head, per_angle=per_angle,
-                steps=len(per_angle))
+    return dict(intersections=hits, min_gap=worst_gap, min_arm_gap=worst_arm, min_head=worst_head,
+                per_angle=per_angle, steps=len(per_angle))
 
 
 def donning(d, dz_max=220.0, dz_step=4.0, dy_range=(-10.0, 70.0), dy_step=2.0, margin=1.0):
@@ -231,15 +245,34 @@ def _param_of(d, fi, p):
 
 
 def vision(d):
-    """Where does each eye's line of sight cross the closed faceplate?"""
+    """Where does each eye's line of sight cross the closed faceplate? A sight
+    line is clear only if it passes the slot in both surfaces of the board."""
     fm = d.faceplate
-    tris = fm.triangles()
     tri_face = []
     for fi, f in enumerate(fm.faces):
-        n = len(f["vi"]) - 2
-        tri_face += [fi] * n
-    bvh = _bvh(fm.verts, tris)
+        tri_face += [fi] * (len(f["vi"]) - 2)
+    iv, it = [], []
+    for f in fm.faces:
+        base = len(iv)
+        iv += list(fm.pts(f) - fm.normal(f) * P.BOARD)
+        k = {v: i for i, v in enumerate(f["vi"])}
+        it += [tuple(base + k[v] for v in tri) for tri in fm.triangles_of(f)]
+    surfaces = [(_bvh(fm.verts, fm.triangles()), 0.0), (_bvh(iv, it), P.BOARD)]
     holes = [poly for name, poly in d.holes["faceplate"] if name.startswith("eye")]
+
+    def clear(o, dvec):
+        for bvh, depth in surfaces:
+            loc, _, idx, _ = bvh.ray_cast(Vector(o), dvec, 500.0)
+            if loc is None:
+                continue
+            fi = tri_face[idx]
+            if fm.faces[fi].get("cell") is None:
+                return False
+            p = np.array(loc) + fm.normal(fm.faces[fi]) * depth   # back onto the outer surface
+            if not any(g2.point_in_poly(_param_of(d, fi, p), poly) for poly in holes):
+                return False
+        return True
+
     out = {}
     for eye in ("eye_l", "eye_r"):
         o = d.head.landmarks[eye]
@@ -247,17 +280,7 @@ def vision(d):
         for h in range(-30, 31, 5):
             for v in range(-10, 11, 5):
                 a, e = math.radians(h), math.radians(v)
-                dvec = Vector((math.sin(a) * math.cos(e), -math.cos(a) * math.cos(e), math.sin(e)))
-                loc, _, idx, _ = bvh.ray_cast(Vector(o), dvec, 500.0)
-                if loc is None:
-                    seen[(h, v)] = True
-                    continue
-                fi = tri_face[idx]
-                if fm.faces[fi].get("cell") is None:
-                    seen[(h, v)] = False
-                    continue
-                x, ph = _param_of(d, fi, np.array(loc))
-                seen[(h, v)] = any(g2.point_in_poly((x, ph), poly) for poly in holes)
+                seen[(h, v)] = clear(o, Vector((math.sin(a) * math.cos(e), -math.cos(a) * math.cos(e), math.sin(e))))
         out[eye] = dict(straight_ahead=seen[(0, 0)],
                         horizontal=[h for h in range(-30, 31, 5) if seen[(h, 0)]],
                         vertical=[v for v in range(-10, 11, 5) if seen[(0, v)]])

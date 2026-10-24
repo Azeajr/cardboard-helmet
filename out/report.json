@@ -11,84 +11,55 @@
   "back_edge_z": -133.0,
   "pivot_yz": [
    9.0,
-   -20.0
+   -22.0
   ],
   "ear_center_yz": [
    21.0,
    -26.0
   ],
-  "side_x": 96.5,
-  "arm_x": 100.5,
-  "R0": 139.1,
+  "side_x": 104.0,
+  "arm_x": 111.0,
+  "R0": 149.6,
   "shell_rows": [
    10.0,
-   21.5,
-   33.0,
-   44.6,
-   56.1,
-   67.6,
-   79.1,
-   90.6,
-   102.1,
-   113.7,
-   125.2,
-   136.7,
-   148.2,
-   159.7,
-   171.2,
-   182.8,
-   194.3,
-   205.8,
-   217.3,
-   228.8,
-   240.3
+   38.6,
+   67.1,
+   95.7,
+   124.2,
+   152.8,
+   181.3,
+   209.9,
+   238.4
   ],
   "shell_radii": [
-   139.1,
-   139.1,
-   139.1,
-   139.1,
-   139.1,
-   139.1,
-   139.1,
-   139.1,
-   137.0,
-   131.0,
-   127.0,
-   121.3,
-   114.6,
-   108.0,
-   102.9,
-   100.3,
-   98.9,
-   100.0,
-   104.4,
-   113.7,
-   130.7
+   149.6,
+   149.6,
+   149.6,
+   149.6,
+   138.0,
+   121.1,
+   106.5,
+   106.3,
+   131.7
   ],
   "face_radii": [
-   142.6,
-   142.6,
-   144.4,
-   148.5,
-   146.2,
-   147.5,
-   152.6,
-   158.4,
-   158.6
+   162.2,
+   162.2,
+   162.2,
+   163.2,
+   163.2
   ],
-  "face_chord_min": 142.1,
+  "face_chord_min": 158.9,
   "shell_scales": [
    1.0,
-   0.917,
-   0.726,
-   0.59
+   0.813,
+   0.548
   ],
   "face_scales": [
-   1.0,
-   1.0,
-   0.842,
-   0.707
+   1.014,
+   1.014,
+   0.828,
+   0.689
   ]
  },
  "checks": [
@@ -99,22 +70,22 @@
   },
   {
    "name": "Ears",
-   "detail": "5.0 mm from the side plates",
+   "detail": "8.0 mm from the side plates, 5.0 mm from the screw heads inside them",
    "ok": true
   },
   {
    "name": "Face",
-   "detail": "faceplate at least 14.8 mm from your face (target 15; nose 15, chin 16 mm)",
+   "detail": "faceplate at least 17.0 mm from your face (target 15; nose 26, chin 21 mm)",
    "ok": true
   },
   {
    "name": "Faceplate swing",
-   "detail": "tested at 161 angles from closed to 80 deg: no contact; tightest gap 1.0 mm; never closer than 13 mm to your head",
+   "detail": "tested at 161 angles from closed to 80 deg: no contact; tightest gap 5.5 mm (arms ride 1.0 mm off the side plates on the washers); never closer than 17 mm to your head",
    "ok": true
   },
   {
    "name": "Vision",
-   "detail": "both eyes look straight out through the slots; each eye sees -15 to 15 deg sideways and 0 to 10 deg up/down",
+   "detail": "both eyes look straight out through the slots; each eye sees -5 to 25 deg sideways and -5 to 10 deg up/down",
    "ok": true
   },
   {
@@ -129,76 +100,96 @@
   },
   {
    "name": "Flat panels",
-   "detail": "every panel flat to 4e-14 mm; normals consistent",
+   "detail": "every panel flat to 3e-14 mm; normals consistent",
    "ok": true
   },
   {
    "name": "Pieces match the model",
-   "detail": "every flattened panel within 6e-14 mm of its 3D shape; 236 seams each cut on both sides with matching lengths; 234 glue tabs",
+   "detail": "every flattened panel within 9e-14 mm of its 3D shape; 136 seams each cut on both sides with matching lengths",
+   "ok": true
+  },
+  {
+   "name": "Joints",
+   "detail": "every seam turns outwards (up to 56 deg), so square-cut edges meet at the outer corner and leave a V of at most 5.7 mm inside for hot glue (limit 8)",
+   "ok": true
+  },
+  {
+   "name": "Slots",
+   "detail": "eye and mouth slots leave at least 7.0 mm of board to every panel edge (limit 6)",
    "ok": true
   },
   {
    "name": "Pages",
-   "detail": "11 stencil pages; every piece inside the printable area, none touching",
+   "detail": "9 stencil pages; every piece inside the printable area, none touching",
    "ok": true
   },
   {
    "name": "Printed PDF re-measured",
-   "detail": "4130 cut lines read back from this PDF match the model within 0.002 mm; 100 mm bars measure 100.00 mm",
+   "detail": "2350 cut lines read back from this PDF match the model within 0.001 mm; 100 mm bars measure 100.00 mm",
    "ok": true
   }
  ],
  "clearance": {
   "head_to_helmet_min": [
-   11.982540130615234,
+   11.99456787109375,
    [
-    4.7148901767173095e-15,
-    96.0,
-    -20.0
+    4.1545454636637e-15,
+    84.92052913509575,
+    56.0
    ]
   ],
   "ears_to_shell_min": [
-   5.0,
+   8.0,
    [
     90.0,
     2.0,
     -58.0
    ]
   ],
-  "face_to_faceplate_min": [
-   14.841363906860352,
+  "ears_to_screw_min": [
+   5.0,
    [
-    0.0,
-    -118.0,
-    -55.0
+    90.0,
+    6.222222222222222,
+    -28.46153846153846
    ]
   ],
-  "nose_tip_to_faceplate": 14.841363906860352,
-  "pogonion_to_faceplate": 15.80587387084961,
-  "menton_to_faceplate": 15.437788009643555,
-  "mouth_to_faceplate": 27.676380157470703,
-  "crown_to_shell": 16.526506423950195,
-  "forehead_to_shell": 29.402578353881836
+  "face_to_faceplate_min": [
+   16.975751876831055,
+   [
+    -2.3456060084075754e-18,
+    -72.06666666666666,
+    -136.0
+   ]
+  ],
+  "nose_tip_to_faceplate": 26.368534088134766,
+  "pogonion_to_faceplate": 20.95940589904785,
+  "menton_to_faceplate": 16.881378173828125,
+  "mouth_to_faceplate": 39.57658386230469,
+  "crown_to_shell": 17.03378677368164,
+  "forehead_to_shell": 33.332305908203125
  },
  "swing": {
   "intersections": [],
-  "min_gap": 1.0,
-  "min_head": 12.8917236328125,
+  "min_gap": 5.471550464630127,
+  "min_arm_gap": 1.0,
+  "min_head": 16.975751876831055,
   "steps": 161
  },
  "vision": {
   "eye_l": {
    "straight_ahead": true,
    "horizontal": [
-    -15,
-    -10,
     -5,
     0,
     5,
     10,
-    15
+    15,
+    20,
+    25
    ],
    "vertical": [
+    -5,
     0,
     5,
     10
@@ -207,15 +198,16 @@
   "eye_r": {
    "straight_ahead": true,
    "horizontal": [
+    -25,
+    -20,
     -15,
     -10,
     -5,
     0,
-    5,
-    10,
-    15
+    5
    ],
    "vertical": [
+    -5,
     0,
     5,
     10
@@ -238,204 +230,297 @@
  },
  "mesh": {
   "shell": {
-   "faces": 142,
-   "max_planarity_mm": 4.085620730620576e-14,
+   "faces": 42,
+   "max_planarity_mm": 1.9539925233402755e-14,
    "nonmanifold_edges": 0,
    "inconsistent_normals": 0
   },
   "faceplate": {
-   "faces": 58,
-   "max_planarity_mm": 3.907985046680551e-14,
+   "faces": 30,
+   "max_planarity_mm": 3.375077994860476e-14,
    "nonmanifold_edges": 0,
    "inconsistent_normals": 0
   }
  },
  "unfold": {
-  "face_shape_error_mm": 5.684341886080802e-14,
+  "face_shape_error_mm": 8.526512829121202e-14,
   "orientation_errors": 0,
   "overlaps": [],
-  "seams": 236,
+  "seams": 136,
   "bad_seams": [],
-  "tabs": 234
+  "joint_angle_max": 56.32921981399246,
+  "joint_gap_max": 5.664075802124192,
+  "slot_bridge_min": 7.0
  },
  "pages": {
-  "pages": 11,
+  "pages": 9,
   "out_of_bounds": [],
   "clashes": []
  },
  "pdf": [
   {
    "page": 4,
-   "expected": 204,
-   "found": 204,
-   "max_error_mm": 0.001473547665963082,
+   "expected": 175,
+   "found": 175,
+   "max_error_mm": 0.0013661573329981636,
    "scale_bar_mm": 100.00009774444442
   },
   {
    "page": 5,
-   "expected": 177,
-   "found": 177,
-   "max_error_mm": 0.0013447142655014233,
+   "expected": 48,
+   "found": 48,
+   "max_error_mm": 0.001266425592888254,
    "scale_bar_mm": 100.00009774444442
   },
   {
    "page": 6,
-   "expected": 561,
-   "found": 561,
-   "max_error_mm": 0.0013779482310245506,
+   "expected": 142,
+   "found": 142,
+   "max_error_mm": 0.0012544212504834729,
    "scale_bar_mm": 100.00009774444442
   },
   {
    "page": 7,
-   "expected": 345,
-   "found": 345,
-   "max_error_mm": 0.0012692725506529001,
+   "expected": 142,
+   "found": 142,
+   "max_error_mm": 0.0011816548709688846,
    "scale_bar_mm": 100.00009774444442
   },
   {
    "page": 8,
-   "expected": 197,
-   "found": 197,
-   "max_error_mm": 0.0015199932302571995,
+   "expected": 256,
+   "found": 256,
+   "max_error_mm": 0.001165259627036619,
    "scale_bar_mm": 100.00009774444442
   },
   {
    "page": 9,
-   "expected": 154,
-   "found": 154,
-   "max_error_mm": 0.0013914151368261685,
+   "expected": 347,
+   "found": 347,
+   "max_error_mm": 0.0013174067454881921,
    "scale_bar_mm": 100.00009774444442
   },
   {
    "page": 10,
-   "expected": 458,
-   "found": 458,
-   "max_error_mm": 0.00142831269460153,
+   "expected": 67,
+   "found": 67,
+   "max_error_mm": 0.001139058333343712,
    "scale_bar_mm": 100.00009774444442
   },
   {
    "page": 11,
-   "expected": 542,
-   "found": 542,
-   "max_error_mm": 0.001310692941120628,
+   "expected": 180,
+   "found": 180,
+   "max_error_mm": 0.0012566175263386548,
    "scale_bar_mm": 100.00009774444442
   },
   {
    "page": 12,
-   "expected": 505,
-   "found": 505,
-   "max_error_mm": 0.0013664671254756122,
-   "scale_bar_mm": 100.00009774444442
-  },
-  {
-   "page": 13,
-   "expected": 507,
-   "found": 507,
-   "max_error_mm": 0.0012782150990364727,
-   "scale_bar_mm": 100.00009774444442
-  },
-  {
-   "page": 14,
-   "expected": 480,
-   "found": 480,
-   "max_error_mm": 0.0016375780588466782,
+   "expected": 993,
+   "found": 993,
+   "max_error_mm": 0.0013272803814881051,
    "scale_bar_mm": 100.00009774444442
   }
  ],
  "pieces": [
   {
-   "name": "S-R3-1",
-   "title": "Shell strip R3, part 1 of 2",
-   "count": 1
-  },
-  {
-   "name": "S-R3-2",
-   "title": "Shell strip R3, part 2 of 2",
-   "count": 1
-  },
-  {
    "name": "S-R2-1",
-   "title": "Shell strip R2, part 1 of 3",
+   "title": "Shell panel R2, row 1",
    "count": 1
   },
   {
    "name": "S-R2-2",
-   "title": "Shell strip R2, part 2 of 3",
+   "title": "Shell panel R2, row 2",
    "count": 1
   },
   {
    "name": "S-R2-3",
-   "title": "Shell strip R2, part 3 of 3",
+   "title": "Shell panel R2, row 3",
+   "count": 1
+  },
+  {
+   "name": "S-R2-4",
+   "title": "Shell panel R2, row 4",
+   "count": 1
+  },
+  {
+   "name": "S-R2-5",
+   "title": "Shell panel R2, row 5",
+   "count": 1
+  },
+  {
+   "name": "S-R2-6",
+   "title": "Shell panel R2, row 6",
+   "count": 1
+  },
+  {
+   "name": "S-R2-7",
+   "title": "Shell panel R2, row 7",
+   "count": 1
+  },
+  {
+   "name": "S-R2-8",
+   "title": "Shell panel R2, row 8",
    "count": 1
   },
   {
    "name": "S-R1-1",
-   "title": "Shell strip R1, part 1 of 3",
+   "title": "Shell panel R1, row 1",
    "count": 1
   },
   {
    "name": "S-R1-2",
-   "title": "Shell strip R1, part 2 of 3",
+   "title": "Shell panel R1, row 2",
    "count": 1
   },
   {
    "name": "S-R1-3",
-   "title": "Shell strip R1, part 3 of 3",
+   "title": "Shell panel R1, row 3",
+   "count": 1
+  },
+  {
+   "name": "S-R1-4",
+   "title": "Shell panel R1, row 4",
+   "count": 1
+  },
+  {
+   "name": "S-R1-5",
+   "title": "Shell panel R1, row 5",
+   "count": 1
+  },
+  {
+   "name": "S-R1-6",
+   "title": "Shell panel R1, row 6",
+   "count": 1
+  },
+  {
+   "name": "S-R1-7",
+   "title": "Shell panel R1, row 7",
+   "count": 1
+  },
+  {
+   "name": "S-R1-8",
+   "title": "Shell panel R1, row 8",
    "count": 1
   },
   {
    "name": "S-C-1",
-   "title": "Shell strip C, part 1 of 3",
+   "title": "Shell panel C, row 1",
    "count": 1
   },
   {
    "name": "S-C-2",
-   "title": "Shell strip C, part 2 of 3",
+   "title": "Shell panel C, row 2",
    "count": 1
   },
   {
    "name": "S-C-3",
-   "title": "Shell strip C, part 3 of 3",
+   "title": "Shell panel C, row 3",
+   "count": 1
+  },
+  {
+   "name": "S-C-4",
+   "title": "Shell panel C, row 4",
+   "count": 1
+  },
+  {
+   "name": "S-C-5",
+   "title": "Shell panel C, row 5",
+   "count": 1
+  },
+  {
+   "name": "S-C-6",
+   "title": "Shell panel C, row 6",
+   "count": 1
+  },
+  {
+   "name": "S-C-7",
+   "title": "Shell panel C, row 7",
+   "count": 1
+  },
+  {
+   "name": "S-C-8",
+   "title": "Shell panel C, row 8",
    "count": 1
   },
   {
    "name": "S-L1-1",
-   "title": "Shell strip L1, part 1 of 3",
+   "title": "Shell panel L1, row 1",
    "count": 1
   },
   {
    "name": "S-L1-2",
-   "title": "Shell strip L1, part 2 of 3",
+   "title": "Shell panel L1, row 2",
    "count": 1
   },
   {
    "name": "S-L1-3",
-   "title": "Shell strip L1, part 3 of 3",
+   "title": "Shell panel L1, row 3",
+   "count": 1
+  },
+  {
+   "name": "S-L1-4",
+   "title": "Shell panel L1, row 4",
+   "count": 1
+  },
+  {
+   "name": "S-L1-5",
+   "title": "Shell panel L1, row 5",
+   "count": 1
+  },
+  {
+   "name": "S-L1-6",
+   "title": "Shell panel L1, row 6",
+   "count": 1
+  },
+  {
+   "name": "S-L1-7",
+   "title": "Shell panel L1, row 7",
+   "count": 1
+  },
+  {
+   "name": "S-L1-8",
+   "title": "Shell panel L1, row 8",
    "count": 1
   },
   {
    "name": "S-L2-1",
-   "title": "Shell strip L2, part 1 of 3",
+   "title": "Shell panel L2, row 1",
    "count": 1
   },
   {
    "name": "S-L2-2",
-   "title": "Shell strip L2, part 2 of 3",
+   "title": "Shell panel L2, row 2",
    "count": 1
   },
   {
    "name": "S-L2-3",
-   "title": "Shell strip L2, part 3 of 3",
+   "title": "Shell panel L2, row 3",
    "count": 1
   },
   {
-   "name": "S-L3-1",
-   "title": "Shell strip L3, part 1 of 2",
+   "name": "S-L2-4",
+   "title": "Shell panel L2, row 4",
    "count": 1
   },
   {
-   "name": "S-L3-2",
-   "title": "Shell strip L3, part 2 of 2",
+   "name": "S-L2-5",
+   "title": "Shell panel L2, row 5",
+   "count": 1
+  },
+  {
+   "name": "S-L2-6",
+   "title": "Shell panel L2, row 6",
+   "count": 1
+  },
+  {
+   "name": "S-L2-7",
+   "title": "Shell panel L2, row 7",
+   "count": 1
+  },
+  {
+   "name": "S-L2-8",
+   "title": "Shell panel L2, row 8",
    "count": 1
   },
   {
@@ -449,6 +534,146 @@
    "count": 1
   },
   {
+   "name": "F-R3-1",
+   "title": "Faceplate panel R3, row 1",
+   "count": 1
+  },
+  {
+   "name": "F-R3-2",
+   "title": "Faceplate panel R3, row 2",
+   "count": 1
+  },
+  {
+   "name": "F-R3-3",
+   "title": "Faceplate panel R3, row 3",
+   "count": 1
+  },
+  {
+   "name": "F-R3-4",
+   "title": "Faceplate panel R3, row 4",
+   "count": 1
+  },
+  {
+   "name": "F-R2-1",
+   "title": "Faceplate panel R2, row 1",
+   "count": 1
+  },
+  {
+   "name": "F-R2-2",
+   "title": "Faceplate panel R2, row 2",
+   "count": 1
+  },
+  {
+   "name": "F-R2-3",
+   "title": "Faceplate panel R2, row 3",
+   "count": 1
+  },
+  {
+   "name": "F-R2-4",
+   "title": "Faceplate panel R2, row 4",
+   "count": 1
+  },
+  {
+   "name": "F-R1-1",
+   "title": "Faceplate panel R1, row 1",
+   "count": 1
+  },
+  {
+   "name": "F-R1-2",
+   "title": "Faceplate panel R1, row 2",
+   "count": 1
+  },
+  {
+   "name": "F-R1-3",
+   "title": "Faceplate panel R1, row 3",
+   "count": 1
+  },
+  {
+   "name": "F-R1-4",
+   "title": "Faceplate panel R1, row 4",
+   "count": 1
+  },
+  {
+   "name": "F-C-1",
+   "title": "Faceplate panel C, row 1",
+   "count": 1
+  },
+  {
+   "name": "F-C-2",
+   "title": "Faceplate panel C, row 2",
+   "count": 1
+  },
+  {
+   "name": "F-C-3",
+   "title": "Faceplate panel C, row 3",
+   "count": 1
+  },
+  {
+   "name": "F-C-4",
+   "title": "Faceplate panel C, row 4",
+   "count": 1
+  },
+  {
+   "name": "F-L1-1",
+   "title": "Faceplate panel L1, row 1",
+   "count": 1
+  },
+  {
+   "name": "F-L1-2",
+   "title": "Faceplate panel L1, row 2",
+   "count": 1
+  },
+  {
+   "name": "F-L1-3",
+   "title": "Faceplate panel L1, row 3",
+   "count": 1
+  },
+  {
+   "name": "F-L1-4",
+   "title": "Faceplate panel L1, row 4",
+   "count": 1
+  },
+  {
+   "name": "F-L2-1",
+   "title": "Faceplate panel L2, row 1",
+   "count": 1
+  },
+  {
+   "name": "F-L2-2",
+   "title": "Faceplate panel L2, row 2",
+   "count": 1
+  },
+  {
+   "name": "F-L2-3",
+   "title": "Faceplate panel L2, row 3",
+   "count": 1
+  },
+  {
+   "name": "F-L2-4",
+   "title": "Faceplate panel L2, row 4",
+   "count": 1
+  },
+  {
+   "name": "F-L3-1",
+   "title": "Faceplate panel L3, row 1",
+   "count": 1
+  },
+  {
+   "name": "F-L3-2",
+   "title": "Faceplate panel L3, row 2",
+   "count": 1
+  },
+  {
+   "name": "F-L3-3",
+   "title": "Faceplate panel L3, row 3",
+   "count": 1
+  },
+  {
+   "name": "F-L3-4",
+   "title": "Faceplate panel L3, row 4",
+   "count": 1
+  },
+  {
    "name": "F-ARM-R",
    "title": "Faceplate pivot arm (right)",
    "count": 1
@@ -456,41 +681,6 @@
   {
    "name": "F-ARM-L",
    "title": "Faceplate pivot arm (left)",
-   "count": 1
-  },
-  {
-   "name": "F-R3",
-   "title": "Faceplate strip R3",
-   "count": 1
-  },
-  {
-   "name": "F-R2",
-   "title": "Faceplate strip R2",
-   "count": 1
-  },
-  {
-   "name": "F-R1",
-   "title": "Faceplate strip R1",
-   "count": 1
-  },
-  {
-   "name": "F-C",
-   "title": "Faceplate strip C",
-   "count": 1
-  },
-  {
-   "name": "F-L1",
-   "title": "Faceplate strip L1",
-   "count": 1
-  },
-  {
-   "name": "F-L2",
-   "title": "Faceplate strip L2",
-   "count": 1
-  },
-  {
-   "name": "F-L3",
-   "title": "Faceplate strip L3",
    "count": 1
   },
   {
@@ -529,19 +719,24 @@
    "count": 1
   },
   {
-   "name": "E-SIDE",
-   "title": "Pivot disc, glued outside each shell side plate",
-   "count": 2
+   "name": "O-CREST-3",
+   "title": "Overlay crest-3",
+   "count": 1
   },
   {
-   "name": "E-DISC",
-   "title": "Ear disc, glued outside each faceplate arm",
-   "count": 2
+   "name": "O-CREST-4",
+   "title": "Overlay crest-4",
+   "count": 1
+  },
+  {
+   "name": "O-CREST-5",
+   "title": "Overlay crest-5",
+   "count": 1
   },
   {
    "name": "E-RING",
-   "title": "Ear ring, two stacked on each ear disc",
-   "count": 4
+   "title": "Ear ring, glued on each arm around the screw cap",
+   "count": 2
   }
  ]
 }

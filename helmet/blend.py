@@ -66,7 +66,8 @@ def _head_mesh(h):
 
 
 def _param_patches(d, grid, poly, lift):
-    """3D patches of a param-space polygon on a grid surface, lifted outward."""
+    """3D patches of a param-space polygon on a grid surface, lifted outward
+    along each panel's normal."""
     verts, faces = [], []
     dense = g2.densify(poly, 1.0)
     for i in range(len(grid.xs) - 1):
@@ -76,11 +77,15 @@ def _param_patches(d, grid, poly, lift):
             if len(clip) < 3 or abs(g2.area(clip)) < 1e-3:
                 continue
             pts = [grid.point(p[0], p[1], (i, j)) for p in clip]
+            n = np.zeros(3)
+            for a, b in zip(pts, pts[1:] + pts[:1]):   # Newell
+                n += np.cross(a, b)
+            n /= np.linalg.norm(n)
             c = np.mean(pts, axis=0)
-            radial = np.array([0.0, c[1] - d.pivot[0], c[2] - d.pivot[1]])
-            radial /= np.linalg.norm(radial)
+            if np.dot(n, [0.0, c[1] - d.pivot[0], c[2] - d.pivot[1]]) < 0:
+                n, pts = -n, pts[::-1]     # face outwards, so solidifying inwards lands on the panel
             k = len(verts)
-            verts += [tuple(p + radial * lift) for p in pts]
+            verts += [tuple(p + n * lift) for p in pts]
             faces.append(list(range(k, k + len(pts))))
     return verts, faces
 
@@ -139,27 +144,27 @@ def build_scene(d, overlay_defs=None):
         _obj(f"Slot {name}", [np.asarray(p) - loc for p in v], f, mats["slot"], parent=pivot)
     for name, gname, poly in d.overlays:
         grid = d.face_grid if gname == "face" else d.shell_grid
-        v, f = _param_patches(d, grid, poly, P.BOARD * 0.5 + 0.2)
+        v, f = _param_patches(d, grid, poly, P.BOARD + 0.1)    # on top of the panel
         if gname == "face":
             ob = _obj(name, [np.asarray(p) - loc for p in v], f, mats["overlay"], parent=pivot)
         else:
             ob = _obj(name, v, f, mats["crest"])
         _solidify(ob, P.BOARD)
 
+    # Pivot, inside to out: screw head, washer, side plate, washer, arm, washer, cap.
+    w, hd, wr = P.PIVOT_WASHER, P.PIVOT_HEAD, P.PIVOT_WASHER_D / 2
+    inside = d.side_x - P.BOARD
     for sgn in (-1.0, 1.0):
         side = "L" if sgn > 0 else "R"
-        xs = sgn * d.side_x
-        _disc(d, xs if sgn > 0 else xs - P.BOARD, P.SIDE_DISC_R, P.BOARD, f"E-SIDE-{side}", mats["shell"])
-        xa = sgn * d.arm_x
-        for k, (r, rin) in enumerate(((P.EAR_DISC_R, None), (P.EAR_DISC_R, P.EAR_RING_IN),
-                                      (P.EAR_DISC_R, P.EAR_RING_IN))):
-            x0 = xa + k * P.BOARD if sgn > 0 else xa - (k + 1) * P.BOARD
-            ob = _disc(d, x0, r, P.BOARD, f"Ear {side}{k}", mats["face"], ring_in=rin)
-            ob.location = (0.0, -d.pivot[0], -d.pivot[1])
-            ob.parent = pivot
-        # The cap sits on the E-DISC, recessed inside the rings.
-        _disc(d, sgn * (d.arm_x + P.BOARD) if sgn > 0 else sgn * (d.arm_x + P.BOARD) - 1.2,
-              6.0, 1.2, f"Chicago screw {side}", mats["hardware"])
+        at = lambda x0, t: x0 if sgn > 0 else -x0 - t   # [x0, x0 + t] on the left, mirrored
+        for x0, t, r, what in ((inside - w - hd, hd, 6.0, "Chicago screw head"), (inside - w, w, wr, "Washer in"),
+                               (d.side_x, w, wr, "Washer mid"), (d.arm_x, w, wr, "Washer out"),
+                               (d.arm_x + w, hd, 6.0, "Chicago screw cap")):
+            _disc(d, at(x0, t), r, t, f"{what} {side}", mats["hardware"])
+        ob = _disc(d, at(d.arm_x, P.BOARD), P.EAR_DISC_R, P.BOARD, f"E-RING-{side}", mats["face"],
+                   ring_in=P.EAR_RING_IN)
+        ob.location = (0.0, -d.pivot[0], -d.pivot[1])
+        ob.parent = pivot
     return dict(pivot=pivot, head=head)
 
 

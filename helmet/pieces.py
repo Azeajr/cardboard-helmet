@@ -1,6 +1,9 @@
-"""Cut the meshes into flat pieces: islands, unfolding, glue tabs, seam
-numbers, fold lines and holes. Everything is computed in the outside view and
-mirrored at the end, because the printed side of each piece is the inside."""
+"""Cut the meshes into flat pieces: islands, unfolding, seam numbers, fold
+lines and holes. Everything is computed in the outside view and mirrored at
+the end, because the printed side of each piece is the inside.
+
+Seams are butt joints: both edges are cut square at the outer surface, so the
+outer corners meet and the board leaves a V on the inside for hot glue."""
 
 import math
 import numpy as np
@@ -10,6 +13,7 @@ from . import geom2d as g2
 from .mesh import Mesh
 
 FLAT_FOLD = 0.2   # degrees; folds flatter than this are not drawn
+SEAM_SIZE = 3.2   # seam numbers along each edge
 
 
 class Piece:
@@ -19,23 +23,18 @@ class Piece:
         self.poly = {}       # face index -> 2D polygon (printed view)
         self.cuts = []       # dict(a, b, seam, length)
         self.folds = []      # dict(a, b, kind, angle)
-        self.tabs = []       # dict(poly, seam)
         self.holes = []      # (a, b) segments
         self.labels = []     # dict(text, pos, angle, size, bold)
         self.count = 1       # how many to cut
 
     def points(self):
-        pts = [p for poly in self.poly.values() for p in poly]
-        pts += [p for t in self.tabs for p in t["poly"]]
-        return np.array(pts)
+        return np.array([p for poly in self.poly.values() for p in poly])
 
     def transform(self, R, t):
         f = lambda p: np.asarray(p) @ R.T + t
         self.poly = {k: f(v) for k, v in self.poly.items()}
         for c in self.cuts + self.folds:
             c["a"], c["b"] = f(c["a"]), f(c["b"])
-        for tb in self.tabs:
-            tb["poly"] = f(tb["poly"])
         self.holes = [(f(a), f(b)) for a, b in self.holes]
         for lb in self.labels:
             lb["pos"] = f(lb["pos"])
@@ -134,49 +133,6 @@ def spanning_tree(mesh, faces, allow, root):
     return tree, folds
 
 
-# --- tabs ------------------------------------------------------------------------
-def make_tab(A, B, other, width):
-    """Glue tab along A-B (2D) on the side where `other` (the neighbour face
-    unfolded across the edge) lies, kept inside `other` so it lands flat on it."""
-    d = B - A
-    L = np.linalg.norm(d)
-    d = d / L
-    m = np.array([-d[1], d[0]])
-    if np.dot(g2.centroid(other) - A, m) < 0:
-        m = -m
-
-    def corner_angle(P0, P1):
-        # interior angle of `other` at P0, between the shared edge and its next
-        # edge; mid-edge ends (beside a hole) get a plain 45 degree chamfer
-        dist = np.linalg.norm(other - P0, axis=1)
-        k = int(np.argmin(dist))
-        if dist[k] > 1e-6:
-            return 90.0
-        n = len(other)
-        for q in (other[(k - 1) % n], other[(k + 1) % n]):
-            if np.linalg.norm(q - P1) < 1e-6:
-                continue
-            v, e = q - P0, P1 - P0
-            return math.degrees(math.acos(np.clip(np.dot(v, e) / (np.linalg.norm(v) * np.linalg.norm(e)), -1, 1)))
-        return 90.0
-
-    for w in (width, width * 0.75, width * 0.625, width * 0.5, width * 0.375):
-        aA = math.radians(min(45.0, corner_angle(A, B) - 8.0))
-        aB = math.radians(min(45.0, corner_angle(B, A) - 8.0))
-        if aA <= math.radians(10) or aB <= math.radians(10):
-            return None
-        ia, ib = w / math.tan(aA), w / math.tan(aB)
-        if ia + ib > L - 2.0:
-            continue
-        tab = np.array([A, B, B + m * w - d * ib, A + m * w + d * ia])
-        inner = g2.offset_inward(tab, 0.05)
-        if all(g2.point_in_poly(p, other) for p in inner) and not any(
-                g2.seg_intersect(inner[i], inner[(i + 1) % 4], other[j], other[(j + 1) % len(other)])
-                for i in range(4) for j in range(len(other))):
-            return tab
-    return None
-
-
 # --- building pieces ---------------------------------------------------------------
 class Body:
     """A mesh plus island assignment and holes, ready to be cut into pieces."""
@@ -187,7 +143,6 @@ class Body:
         self.islands = []          # dict(name, faces, allow, root, order, title, kind)
         self.param_holes = []      # param-space polygons on the grid
         self.plate_holes = {}      # face index -> list of 3D polygons
-        self.tabs = True           # False: internal cuts are slits, not seams
 
 
 def build_pieces(bodies, start_seam=1):
@@ -220,7 +175,7 @@ def build_pieces(bodies, start_seam=1):
         vparam = _vertex_params(body) if body.grid is not None else {}
         hole_iv = lambda a, b: _hole_intervals(body, vparam, a, b)
 
-        # cut edges: decide tab side, number the seams
+        # cut edges: number the seams and size each joint
         cut_edges = []
         for key, users in edges.items():
             if len(users) == 2 and key in folds:
@@ -236,51 +191,17 @@ def build_pieces(bodies, start_seam=1):
             return (o[1], o[0], -mid[2], mid[1])
         for key, users in sorted(cut_edges, key=sort_key):
             (f1, _), (f2, _) = users
-            i1, i2 = owner[f1], owner[f2]
-            if i1 == i2 and not body.tabs:
-                # A slit inside a glued-on overlay: it closes up when glued down.
-                pc = isl_by_name[i1]
-                length = float(np.linalg.norm(m.verts[key[1]] - m.verts[key[0]]))
-                for f in (f1, f2):
-                    a2, b2 = unf.map(f, m.verts[key[0]]), unf.map(f, m.verts[key[1]])
-                    pc.cuts.append(dict(a=a2, b=b2, seam=None, length=length))
-                continue
-            # tab on the piece attached later; within one piece, on the first face
-            cand = [(f2, f1), (f1, f2)] if order_of[i2] > order_of[i1] else [(f1, f2), (f2, f1)]
             solid = g2.subtract_intervals([(0, 1)], hole_iv(*key))
             length = float(np.linalg.norm(m.verts[key[1]] - m.verts[key[0]]))
-            placed = None
-            for tf, nf in cand:
-                pc = isl_by_name[owner[tf]]
-                tabs = []
-                A3, B3 = m.verts[key[0]], m.verts[key[1]]
-                A, B = unf.map(tf, A3), unf.map(tf, B3)
-                fr, R, t = unf.place(nf, key[0], key[1], A, B)
-                other = np.array([R @ Unfolder.local(fr, m.verts[v]) + t for v in m.faces[nf]["vi"]])
-                ok = True
-                for s0, s1 in solid:
-                    if (s1 - s0) * length < (6.0 if len(solid) == 1 else 12.0):
-                        continue
-                    tab = make_tab(A + (B - A) * s0, A + (B - A) * s1, other, P.TAB_WIDTH)
-                    if tab is None:
-                        ok = False
-                        break
-                    if any(g2.polys_overlap(tab, poly) for poly in pc.poly.values()) or any(
-                            g2.polys_overlap(tab, tb["poly"]) for tb in pc.tabs):
-                        ok = False
-                        break
-                    tabs.append(tab)
-                if ok:
-                    placed = (tf, nf, tabs)
-                    break
-            if placed is None:
-                raise RuntimeError(f"no room for a glue tab on edge {key} ({i1}/{i2}), length {length:.1f}, solid {solid}")
-            tf, nf, tabs = placed
-            pc_t = isl_by_name[owner[tf]]
-            for tab in tabs:
-                pc_t.tabs.append(dict(poly=tab, seam=seam_no))
-            seams.append(dict(seam=seam_no, edge=key, length=length, tab_piece=owner[tf],
-                              other_piece=owner[nf], tab_face=tf, other_face=nf, solid=solid))
+            n1, n2 = m.normal(m.faces[f1]), m.normal(m.faces[f2])
+            angle = math.degrees(math.acos(np.clip(np.dot(n1, n2), -1, 1)))
+            # Convex (seen from outside): square edges open into a V inside.
+            # Concave would make the boards collide on the inside.
+            c1, c2 = m.center_of(m.faces[f1]["vi"]), m.center_of(m.faces[f2]["vi"])
+            convex = np.dot(n1, c2 - c1) <= 1e-9
+            seams.append(dict(seam=seam_no, edge=key, length=length, pieces=(owner[f1], owner[f2]),
+                              solid=solid, angle=angle, convex=bool(convex),
+                              gap=2 * P.BOARD * math.sin(math.radians(angle) / 2)))
             for f in (f1, f2):
                 pc = isl_by_name[owner[f]]
                 a2, b2 = unf.map(f, m.verts[key[0]]), unf.map(f, m.verts[key[1]])
@@ -330,7 +251,6 @@ def build_pieces(bodies, start_seam=1):
     for pc in pieces:
         pc.transform(M, np.zeros(2))
         pc.poly = {k: v[::-1] for k, v in pc.poly.items()}
-        # tab polygons keep their order: [A, B] is the fold, the rest is cut
         name_label(pc)
     return pieces, seams
 
@@ -406,10 +326,9 @@ def _seam_label(pc, f, a2, b2, seam, length):
     mid = (a2 + b2) / 2
     if not g2.point_in_poly(mid + m * 1.0, poly):
         m = -m
-    size = 2.6
-    pos = mid + m * (size * 0.5 + 1.6)
+    pos = mid + m * (SEAM_SIZE * 0.5 + 1.6)
     pc.labels.append(dict(text=str(seam), pos=pos, angle=_readable(math.degrees(math.atan2(d[1], d[0]))),
-                          size=size, bold=False, kind="seam"))
+                          size=SEAM_SIZE, bold=False, kind="seam"))
 
 
 # --- holes ---------------------------------------------------------------------
