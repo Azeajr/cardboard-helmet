@@ -66,29 +66,68 @@
    113.7,
    130.7
   ],
-  "face_radii": [
-   142.6,
-   142.6,
-   144.4,
-   148.5,
-   146.2,
-   147.5,
-   152.6,
-   158.4,
-   158.6
+  "face_rows": [
+   17.0,
+   7.0,
+   -5.0,
+   -15.0,
+   -24.0,
+   -33.0,
+   -42.0,
+   -51.0,
+   -60.0
   ],
-  "face_chord_min": 142.1,
+  "face_radii_by_column": {
+   "x=15": [
+    142.6,
+    142.6,
+    144.5,
+    148.5,
+    146.1,
+    147.3,
+    152.4,
+    158.4,
+    158.6
+   ],
+   "x=45": [
+    142.6,
+    142.6,
+    144.5,
+    143.4,
+    146.2,
+    147.5,
+    142.1,
+    140.5,
+    142.4
+   ],
+   "x=75": [
+    120.1,
+    120.1,
+    121.6,
+    125.0,
+    123.0,
+    124.1,
+    128.4,
+    117.7,
+    119.0
+   ],
+   "x=100": [
+    100.9,
+    100.9,
+    102.2,
+    101.4,
+    103.4,
+    104.3,
+    100.0,
+    98.3,
+    99.1
+   ]
+  },
   "shell_scales": [
    1.0,
    0.917,
    0.726,
    0.59
-  ],
-  "face_scales": [
-   1.0,
-   1.0,
-   0.842,
-   0.707
   ]
  },
  "checks": [
@@ -129,22 +168,22 @@
   },
   {
    "name": "Flat panels",
-   "detail": "every panel flat to 4e-14 mm; normals consistent",
+   "detail": "every panel flat to 2e-08 mm; normals consistent",
    "ok": true
   },
   {
    "name": "Pieces match the model",
-   "detail": "every flattened panel within 6e-14 mm of its 3D shape; 236 seams each cut on both sides with matching lengths; 234 glue tabs",
+   "detail": "every flattened panel within 9e-14 mm of its 3D shape; 236 seams each cut on both sides with matching lengths; 234 glue tabs",
    "ok": true
   },
   {
    "name": "Pages",
-   "detail": "11 stencil pages; every piece inside the printable area, none touching",
+   "detail": "10 stencil pages; every piece inside the printable area, none touching",
    "ok": true
   },
   {
    "name": "Printed PDF re-measured",
-   "detail": "4130 cut lines read back from this PDF match the model within 0.002 mm; 100 mm bars measure 100.00 mm",
+   "detail": "4134 cut lines read back from this PDF match the model within 0.002 mm; 100 mm bars measure 100.00 mm",
    "ok": true
   }
  ],
@@ -166,24 +205,24 @@
    ]
   ],
   "face_to_faceplate_min": [
-   14.841363906860352,
+   14.818880081176758,
    [
     0.0,
     -118.0,
     -55.0
    ]
   ],
-  "nose_tip_to_faceplate": 14.841363906860352,
-  "pogonion_to_faceplate": 15.80587387084961,
-  "menton_to_faceplate": 15.437788009643555,
-  "mouth_to_faceplate": 27.676380157470703,
+  "nose_tip_to_faceplate": 14.818880081176758,
+  "pogonion_to_faceplate": 15.649150848388672,
+  "menton_to_faceplate": 15.431549072265625,
+  "mouth_to_faceplate": 27.562026977539062,
   "crown_to_shell": 16.526506423950195,
   "forehead_to_shell": 29.402578353881836
  },
  "swing": {
   "intersections": [],
   "min_gap": 1.0,
-  "min_head": 12.8917236328125,
+  "min_head": 12.806931495666504,
   "steps": 161
  },
  "vision": {
@@ -244,14 +283,14 @@
    "inconsistent_normals": 0
   },
   "faceplate": {
-   "faces": 58,
-   "max_planarity_mm": 3.907985046680551e-14,
+   "faces": 102,
+   "max_planarity_mm": 1.9262930806007716e-08,
    "nonmanifold_edges": 0,
    "inconsistent_normals": 0
   }
  },
  "unfold": {
-  "face_shape_error_mm": 5.684341886080802e-14,
+  "face_shape_error_mm": 8.526512829121202e-14,
   "orientation_errors": 0,
   "overlaps": [],
   "seams": 236,
@@ -259,86 +298,79 @@
   "tabs": 234
  },
  "pages": {
-  "pages": 11,
+  "pages": 10,
   "out_of_bounds": [],
   "clashes": []
  },
  "pdf": [
   {
    "page": 4,
-   "expected": 204,
-   "found": 204,
-   "max_error_mm": 0.001473547665963082,
-   "scale_bar_mm": 100.00009774444442
-  },
-  {
-   "page": 5,
-   "expected": 177,
-   "found": 177,
+   "expected": 174,
+   "found": 174,
    "max_error_mm": 0.0013447142655014233,
    "scale_bar_mm": 100.00009774444442
   },
   {
+   "page": 5,
+   "expected": 378,
+   "found": 378,
+   "max_error_mm": 0.0015511152102871129,
+   "scale_bar_mm": 100.00009774444442
+  },
+  {
    "page": 6,
-   "expected": 561,
-   "found": 561,
-   "max_error_mm": 0.0013779482310245506,
+   "expected": 382,
+   "found": 382,
+   "max_error_mm": 0.0014128625586025123,
    "scale_bar_mm": 100.00009774444442
   },
   {
    "page": 7,
-   "expected": 345,
-   "found": 345,
-   "max_error_mm": 0.0012692725506529001,
+   "expected": 403,
+   "found": 403,
+   "max_error_mm": 0.001447992777677598,
    "scale_bar_mm": 100.00009774444442
   },
   {
    "page": 8,
-   "expected": 197,
-   "found": 197,
-   "max_error_mm": 0.0015199932302571995,
+   "expected": 560,
+   "found": 560,
+   "max_error_mm": 0.001473547665963082,
    "scale_bar_mm": 100.00009774444442
   },
   {
    "page": 9,
-   "expected": 154,
-   "found": 154,
-   "max_error_mm": 0.0013914151368261685,
+   "expected": 225,
+   "found": 225,
+   "max_error_mm": 0.001440942798094591,
    "scale_bar_mm": 100.00009774444442
   },
   {
    "page": 10,
-   "expected": 458,
-   "found": 458,
-   "max_error_mm": 0.00142831269460153,
+   "expected": 675,
+   "found": 675,
+   "max_error_mm": 0.0012125094498127709,
    "scale_bar_mm": 100.00009774444442
   },
   {
    "page": 11,
-   "expected": 542,
-   "found": 542,
-   "max_error_mm": 0.001310692941120628,
+   "expected": 189,
+   "found": 189,
+   "max_error_mm": 0.00142831269460153,
    "scale_bar_mm": 100.00009774444442
   },
   {
    "page": 12,
-   "expected": 505,
-   "found": 505,
-   "max_error_mm": 0.0013664671254756122,
+   "expected": 189,
+   "found": 189,
+   "max_error_mm": 0.0016130078019180871,
    "scale_bar_mm": 100.00009774444442
   },
   {
    "page": 13,
-   "expected": 507,
-   "found": 507,
-   "max_error_mm": 0.0012782150990364727,
-   "scale_bar_mm": 100.00009774444442
-  },
-  {
-   "page": 14,
-   "expected": 480,
-   "found": 480,
-   "max_error_mm": 0.0016375780588466782,
+   "expected": 959,
+   "found": 959,
+   "max_error_mm": 0.001519993230255423,
    "scale_bar_mm": 100.00009774444442
   }
  ],

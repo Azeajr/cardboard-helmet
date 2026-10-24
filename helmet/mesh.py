@@ -116,20 +116,67 @@ def ear_clip(poly):
 
 class Grid:
     """Surface between fold lines x = xs[i] and rows at angles phis[j] about the
-    pivot axis: vertex(i, j) = pivot + scale[i] * radius[j] * dir(phis[j]).
-    Every cell is a planar trapezoid because neighbouring columns are scaled
-    copies of the same profile about the same axis."""
+    pivot axis: vertex(i, j) = pivot + R[i, j] * dir(phis[j]).
 
-    def __init__(self, name, xs, scales, phis, radii, pivot):
+    When neighbouring columns are scaled copies of one profile (the shell) every
+    cell is a planar trapezoid. Otherwise (the faceplate) a cell is split along
+    the diagonal that folds outward into two triangles, which are always flat.
+    Param space is (x, phi): a cell's pieces map affinely (triangles) or
+    bilinearly (planar quads) onto 3D."""
+
+    def __init__(self, name, xs, phis, R, pivot):
         self.name = name
         self.xs = np.asarray(xs, float)
-        self.scales = np.asarray(scales, float)
         self.phis = np.asarray(phis, float)
-        self.radii = np.asarray(radii, float)
+        self.R = np.asarray(R, float)
         self.pivot = pivot  # (y, z)
+        self.split = {}
+        for i in range(len(self.xs) - 1):
+            for j in range(len(self.phis) - 1):
+                self.split[(i, j)] = self._choose_split(i, j)
+
+    @classmethod
+    def scaled(cls, name, xs, scales, phis, radii, pivot):
+        return cls(name, xs, phis, np.outer(scales, radii), pivot)
 
     def vertex(self, i, j):
-        return point_at(self.pivot, self.xs[i], self.scales[i] * self.radii[j], self.phis[j])
+        return point_at(self.pivot, self.xs[i], self.R[i, j], self.phis[j])
+
+    def corners(self, i, j):
+        return [self.vertex(i, j), self.vertex(i + 1, j),
+                self.vertex(i + 1, j + 1), self.vertex(i, j + 1)]
+
+    def _choose_split(self, i, j):
+        A, B, C, D = self.corners(i, j)
+        n = np.cross(B - A, C - A)
+        n /= np.linalg.norm(n)
+        off = float(np.dot(n, D - A))
+        if abs(off) < 1e-7:
+            return None
+        out = np.array([0.0, A[1] - self.pivot[0], A[2] - self.pivot[1]])
+        if np.dot(n, out) < 0:
+            n, off = -n, -off
+        return "AC" if off < 0 else "BD"   # the diagonal whose fold bulges outward
+
+    # (s, t) corners of each piece of a cell: A=(0,0) B=(1,0) C=(1,1) D=(0,1)
+    _PIECES = {None: [("q", [(0, 0), (1, 0), (1, 1), (0, 1)])],
+               "AC": [("a", [(0, 0), (1, 0), (1, 1)]), ("b", [(0, 0), (1, 1), (0, 1)])],
+               "BD": [("a", [(0, 0), (1, 0), (0, 1)]), ("b", [(1, 0), (1, 1), (0, 1)])]}
+
+    def pieces(self, i, j):
+        """[(key, param polygon in (x, phi), 3D polygon)] for cell (i, j)."""
+        out = []
+        for tag, st in self._PIECES[self.split[(i, j)]]:
+            par = [self._xp(i, j, s, t) for s, t in st]
+            out.append(((i, j, tag), par, [self._corner(i, j, s, t) for s, t in st]))
+        return out
+
+    def _xp(self, i, j, s, t):
+        return np.array([self.xs[i] + s * (self.xs[i + 1] - self.xs[i]),
+                         self.phis[j] + t * (self.phis[j + 1] - self.phis[j])])
+
+    def _corner(self, i, j, s, t):
+        return self.vertex(i + int(s), j + int(t))
 
     def cell_of(self, x, phi):
         i = int(np.clip(np.searchsorted(self.xs, x) - 1, 0, len(self.xs) - 2))
@@ -145,19 +192,112 @@ class Grid:
         t = (phi - self.phis[j]) / (self.phis[j + 1] - self.phis[j])
         return s, t
 
-    def corners(self, i, j):
-        return [self.vertex(i, j), self.vertex(i + 1, j),
-                self.vertex(i + 1, j + 1), self.vertex(i, j + 1)]
+    def _tag(self, i, j, s, t):
+        sp = self.split[(i, j)]
+        if sp is None:
+            return "q"
+        if sp == "AC":
+            return "a" if s >= t else "b"
+        return "a" if s + t <= 1 else "b"
 
-    def point(self, x, phi, cell=None):
+    def locate(self, x, phi, cell=None):
         i, j = cell if cell else self.cell_of(x, phi)
         s, t = self.st(i, j, x, phi)
+        return (i, j, self._tag(i, j, s, t))
+
+    def point(self, x, phi, key=None):
+        if key is None or len(key) == 2:
+            key = self.locate(x, phi, key)
+        i, j, tag = key
+        s, t = self.st(i, j, x, phi)
         A, B, C, D = self.corners(i, j)
-        return (1 - s) * (1 - t) * A + s * (1 - t) * B + s * t * C + (1 - s) * t * D
+        if tag == "q":
+            return (1 - s) * (1 - t) * A + s * (1 - t) * B + s * t * C + (1 - s) * t * D
+        if self.split[(i, j)] == "AC":
+            # a: A + s(B-A) + t(C-B);  b: A + s(C-D) + t(D-A)
+            return A + s * (B - A) + t * (C - B) if tag == "a" else A + s * (C - D) + t * (D - A)
+        return A + s * (B - A) + t * (D - A) if tag == "a" else C + (1 - s) * (D - C) + (1 - t) * (B - C)
+
+    def invert(self, key, p):
+        """(x, phi) of a 3D point lying on piece `key`."""
+        i, j, tag = key
+        A, B, C, D = self.corners(i, j)
+        s, t = 0.5, 0.5
+        for _ in range(40):
+            q = self.point(*self._xp(i, j, s, t), key)
+            h = 1e-6
+            ds = (self.point(*self._xp(i, j, s + h, t), key) - q) / h
+            dt = (self.point(*self._xp(i, j, s, t + h), key) - q) / h
+            step = np.linalg.lstsq(np.column_stack([ds, dt]), np.asarray(p) - q, rcond=None)[0]
+            s, t = s + step[0], t + step[1]
+            if np.linalg.norm(step) < 1e-11:
+                break
+        return tuple(self._xp(i, j, s, t))
 
     def cell_rect(self, i, j):
         lo, hi = sorted((self.phis[j], self.phis[j + 1]))
         return self.xs[i], self.xs[i + 1], lo, hi
+
+    def clip(self, poly):
+        """Clip a param-space polygon to every piece: [(key, param poly, 3D poly)]."""
+        from . import geom2d as g2
+        out = []
+        poly = [np.asarray(p, float) for p in poly]
+        for i in range(len(self.xs) - 1):
+            for j in range(len(self.phis) - 1):
+                x0, x1, p0, p1 = self.cell_rect(i, j)
+                cell = g2.clip_rect(poly, x0, x1, p0, p1)
+                if len(cell) < 3:
+                    continue
+                for key, par, _ in self.pieces(i, j):
+                    c = cell
+                    if key[2] != "q":
+                        for k in range(3):     # clip by each triangle edge
+                            a, b, o = par[k], par[(k + 1) % 3], par[(k + 2) % 3]
+                            e = b - a
+                            nrm = np.array([-e[1], e[0]])
+                            if np.dot(o - a, nrm) < 0:
+                                nrm = -nrm
+                            c = g2.clip_halfplane(c, a, nrm)
+                            if len(c) < 3:
+                                break
+                    if len(c) >= 3 and abs(g2.area(c)) > 1e-6:
+                        out.append((key, c, [self.point(q[0], q[1], key) for q in c]))
+        return out
+
+    def split_segment(self, p, q):
+        """Split a param segment where it crosses grid lines and diagonals:
+        [(key, p0, q0)] with each sub-segment inside one piece."""
+        p, q = np.asarray(p, float), np.asarray(q, float)
+        ts = [0.0, 1.0]
+        for x in self.xs:
+            if (p[0] - x) * (q[0] - x) < 0:
+                ts.append((x - p[0]) / (q[0] - p[0]))
+        for ph in self.phis:
+            if (p[1] - ph) * (q[1] - ph) < 0:
+                ts.append((ph - p[1]) / (q[1] - p[1]))
+        ts = sorted(ts)
+        out = []
+        for t0, t1 in zip(ts, ts[1:]):
+            if t1 - t0 < 1e-12:
+                continue
+            a, b = p + (q - p) * t0, p + (q - p) * t1
+            cell = self.cell_of(*((a + b) / 2))
+            sp = self.split[cell]
+            cuts = [0.0, 1.0]
+            if sp is not None:
+                i, j = cell
+                sa, ta = self.st(i, j, *a)
+                sb, tb = self.st(i, j, *b)
+                fa = sa - ta if sp == "AC" else sa + ta - 1
+                fb = sb - tb if sp == "AC" else sb + tb - 1
+                if fa * fb < 0:
+                    cuts.append(fa / (fa - fb))
+            cuts = sorted(cuts)
+            for u0, u1 in zip(cuts, cuts[1:]):
+                a0, b0 = a + (b - a) * u0, a + (b - a) * u1
+                out.append((self.locate(*((a0 + b0) / 2), cell), a0, b0))
+        return out
 
 
 def point_at(pivot, x, r, phi_deg):

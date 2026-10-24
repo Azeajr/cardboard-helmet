@@ -117,15 +117,9 @@ def overlay_bodies(d):
     for k, (name, gname, poly) in enumerate(d.overlays):
         g = d.face_grid if gname == "face" else d.shell_grid
         m = Mesh(name)
-        dense = g2.densify(poly, 1.0)
-        for i in range(len(g.xs) - 1):
-            for j in range(len(g.phis) - 1):
-                x0, x1, p0, p1 = g.cell_rect(i, j)
-                clip = g2.clip_rect([np.asarray(p, float) for p in dense], x0, x1, p0, p1)
-                if len(clip) < 3 or abs(g2.area(clip)) < 1e-3:
-                    continue
-                pts = [g.point(p[0], p[1], (i, j)) for p in clip]
-                m.add_face(pts, f"{name}:{i}.{j}", d._radial_out, cell=(i, j), plate=None)
+        for key, _, pts in g.clip(g2.densify(poly, 1.0)):
+            m.add_face(pts, f"{name}:{key[0]}.{key[1]}{key[2]}", d._radial_out, cell=key[:2], tri=key[2],
+                       plate=None)
         body = Body(m, None)
         body.tabs = False
         faces = list(range(len(m.faces)))

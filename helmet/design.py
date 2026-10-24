@@ -115,6 +115,77 @@ def _fit_scales(knots, xs, need, iters=200):
     return a
 
 
+def _surface_radius(knots, phis, R, x, phi):
+    """Radius of a column surface at (|x|, phi): each neighbouring column's
+    chord radius at phi, interpolated across. x below knots[0] is the flat
+    centre column."""
+    x = np.clip(x, knots[0], knots[-1])
+    k = np.clip(np.searchsorted(knots, x, side="right") - 1, 0, len(knots) - 2)
+    s = (x - knots[k]) / (knots[k + 1] - knots[k])
+    rho = np.array([profile_radius(phis, R[c], phi) for c in range(len(knots))])
+    idx = np.arange(len(x))
+    return (1 - s) * rho[k, idx] + s * rho[k + 1, idx]
+
+
+def _fit_surface(knots, phis, R, xs, phi, need, sweeps=40):
+    """Lower every vertex of a feasible column surface as far as the required
+    (|x|, phi, radius) points allow (bisection per vertex, repeated)."""
+    R = np.array(R, float)
+    xs = np.clip(np.abs(xs), knots[0], knots[-1])
+    ph = np.asarray(phis, float)
+    asc = ph[0] < ph[-1]
+    for _ in range(sweeps):
+        moved = 0.0
+        for c in range(len(knots)):
+            xm = (xs >= (knots[c - 1] if c > 0 else -1)) & (xs <= (knots[c + 1] if c + 1 < len(knots) else 1e9))
+            for j in range(len(ph)):
+                lo_a = ph[max(j - 1, 0)]
+                hi_a = ph[min(j + 1, len(ph) - 1)]
+                lo_a, hi_a = min(lo_a, hi_a), max(lo_a, hi_a)
+                m = xm & (phi >= lo_a) & (phi <= hi_a)
+                if not m.any():
+                    continue
+                X, F, N = xs[m], phi[m], need[m]
+
+                def ok(v):
+                    old = R[c, j]
+                    R[c, j] = v
+                    good = (_surface_radius(knots, ph, R, X, F) >= N - 1e-6).all()
+                    R[c, j] = old
+                    return good
+                hi = R[c, j]
+                lo = hi * 0.5
+                if ok(lo):
+                    best = lo
+                else:
+                    for _ in range(22):
+                        mid = (lo + hi) / 2
+                        if ok(mid):
+                            hi = mid
+                        else:
+                            lo = mid
+                    best = hi
+                moved = max(moved, R[c, j] - best)
+                R[c, j] = best
+        if moved < 0.01:
+            break
+    return R
+
+
+def _convex_columns(knots, phis, R):
+    """Make every column profile convex (no dents) and every row concave across
+    the columns (no dips sideways); both only push the surface outward."""
+    R = np.array(R, float)
+    for c in range(len(knots)):
+        R[c] = _hull_profile(_fu(R[c], phis), phis)
+    for j in range(len(phis)):
+        for _ in range(len(knots)):
+            for c in range(1, len(knots) - 1):
+                w = (knots[c] - knots[c - 1]) / (knots[c + 1] - knots[c - 1])
+                R[c, j] = max(R[c, j], R[c - 1, j] + w * (R[c + 1, j] - R[c - 1, j]))
+    return R
+
+
 class Design:
     def __init__(self):
         self.head = Head()
@@ -129,10 +200,10 @@ class Design:
         self.pivot = self._choose_pivot()
         self._profiles(self.pivot, final=True)
         self._scales()
-        self.shell_grid = Grid("shell", self._sym(P.SHELL_FOLDS_X, self.side_x),
-                               self._sym_scales(self.a), self.shell_phis, self.shell_r, self.pivot)
-        self.face_grid = Grid("face", self._sym(P.FACE_FOLDS_X, self.arm_x),
-                              self._sym_scales(self.b), self.face_phis, self.face_r, self.pivot)
+        self.shell_grid = Grid.scaled("shell", self._sym(P.SHELL_FOLDS_X, self.side_x),
+                                      self._sym_scales(self.a), self.shell_phis, self.shell_r, self.pivot)
+        self.face_grid = Grid("face", self._sym(P.FACE_FOLDS_X, self.arm_x), self.face_phis,
+                              self._sym_scales(list(self.face_R)), self.pivot)
         self.shell = self._build_shell()
         self.faceplate = self._build_faceplate()
         self.holes = self._holes()
@@ -266,6 +337,20 @@ class Design:
         self.b = _fit_scales(knots_f, np.concatenate(fx), np.concatenate(fneed))
         self.knots_f = knots_f
 
+        # Now let each faceplate column take its own profile, starting from the
+        # scaled (feasible) one: as close to the face as the face clearance and
+        # the swing over the shell allow. Cells become two flat triangles.
+        R = np.outer(self.b, fr)
+        pts_x, pts_phi, pts_need = [x[m]], [phi[m]], [nd[m]]
+        sweep_phi = np.arange(min(fp), max(fp) + 1e-9, 0.5)
+        gx, gp = np.meshgrid(xx, sweep_phi, indexing="ij")
+        pts_x.append(gx.ravel())
+        pts_phi.append(gp.ravel())
+        pts_need.append(np.repeat(shell_top + margin + P.FACE_SWING_EXTRA, len(sweep_phi)))
+        X, F, N = map(np.concatenate, (pts_x, pts_phi, pts_need))
+        R = _fit_surface(knots_f, fp, R, X, F, N)
+        self.face_R = _convex_columns(knots_f, fp, R)
+
     @staticmethod
     def _sym(folds, outer):
         right = list(folds) + [outer]
@@ -287,32 +372,61 @@ class Design:
         ncol = len(g.xs) - 1
         for i in range(ncol):
             for j in range(len(g.phis) - 1):
-                m.add_face(g.corners(i, j), f"S{i}.{j}", self._radial_out, cell=(i, j), plate=None)
+                for key, _, pts in g.pieces(i, j):
+                    m.add_face(pts, f"S{i}.{j}{key[2]}", self._radial_out, cell=(i, j), tri=key[2],
+                               plate=None)
         for side, i in (("R", 0), ("L", len(g.xs) - 1)):
             x = g.xs[i]
             pts = [g.vertex(i, j) for j in range(len(g.phis))]
-            end_r = g.scales[i] * g.radii[-1]
+            end_r = g.R[i, -1]
             # Lower jaw lobe: grows smoothly from the back edge to the faceplate's
             # lower arm corner, just behind the jaw line.
-            jaw_r = max(end_r, self.b[-1] * self.face_r[-1] + 4.0)
+            jaw_r = max(end_r, self.face_R[-1, -1] + 4.0)
             notch = 360.0 - (abs(P.FACE_ROWS[-1]) + P.SIDE_NOTCH_MARGIN)
             for t in np.linspace(0.0, 1.0, 9)[1:]:
                 w = 0.5 - 0.5 * math.cos(math.pi * min(1.0, t * 1.4))
                 pts.append(point_at(self.pivot, x, end_r + (jaw_r - end_r) * w,
                                     g.phis[-1] + (notch - g.phis[-1]) * t))
-            for phi in np.linspace(notch, 360.0 + g.phis[0], 14):
-                pts.append(point_at(self.pivot, x, P.SIDE_DISC_R, phi))
+            # Under the faceplate arm the plate carries on as a disc, hidden by the
+            # arm and kept inside the faceplate's swept surface at this x.
+            # Below the faceplate's bottom edge the plate can be any size (the
+            # faceplate only swings up, away from it); it steps in to r_hide
+            # right at the edge so no gap shows.
+            r_hide = self._under_arm_radius()
+            for phi in np.linspace(notch, 360.0 + g.phis[0] - 2.0, 24):
+                pts.append(point_at(self.pivot, x, r_hide, phi))
             sgn = math.copysign(1.0, x)
             m.add_face(pts, f"S-SIDE-{side}", lambda c, s=sgn: np.array([s, 0.0, 0.0]),
                        cell=None, plate=side)
         return m
+
+    def _under_arm_radius(self):
+        """Largest side-plate radius under the arm that the faceplate's facets
+        (crossing x = side_x .. side_x + BOARD) clear with the swing gap."""
+        k = self.knots_f
+        fp = self.face_phis
+        phis = np.linspace(min(fp), max(fp), 200)
+        worst = math.inf
+        for x in (self.side_x, self.side_x + P.BOARD):
+            r = _surface_radius(k, fp, self.face_R, np.full(phis.size, x), phis)
+            worst = min(worst, float(r.min()))
+        return min(worst - P.BOARD - P.SWING_GAP - 2.5, self.a[-1] * self.R0)
+
+    # Iron Man colour scheme: gold face inside this param-space outline, red
+    # jaw facets below the V jawline and red pivot arms.
+    GOLD_FACE = [(-95.0, 18.0), (95.0, 18.0), (95.0, -8.0), (70.0, -25.0), (40.0, -45.0),
+                 (20.0, -61.0), (-20.0, -61.0), (-40.0, -45.0), (-70.0, -25.0), (-95.0, -8.0)]
 
     def _build_faceplate(self):
         g = self.face_grid
         m = Mesh("faceplate")
         for i in range(len(g.xs) - 1):
             for j in range(len(g.phis) - 1):
-                m.add_face(g.corners(i, j), f"F{i}.{j}", self._radial_out, cell=(i, j), plate=None)
+                for key, par, pts in g.pieces(i, j):
+                    c = np.mean(par, axis=0)
+                    paint = "gold" if g2.point_in_poly(c, self.GOLD_FACE) else "red"
+                    m.add_face(pts, f"F{i}.{j}{key[2]}", self._radial_out, cell=(i, j), tri=key[2],
+                               plate=None, paint=paint)
         for side, i in (("R", 0), ("L", len(g.xs) - 1)):
             x = g.xs[i]
             pts = [g.vertex(i, j) for j in range(len(g.phis))]
@@ -321,7 +435,7 @@ class Design:
                 pts.append(point_at(self.pivot, x, P.EAR_DISC_R, phi))
             sgn = math.copysign(1.0, x)
             m.add_face(pts, f"F-ARM-{side}", lambda c, s=sgn: np.array([s, 0.0, 0.0]),
-                       cell=None, plate=side)
+                       cell=None, plate=side, paint="red")
         return m
 
     # --- holes and overlays (param space: x in mm, phi in degrees) -----------
@@ -338,7 +452,7 @@ class Design:
         brow = [(2.0, 8.5), (84.0, 8.5), (90.0, 16.0), (2.0, 16.0)]
         # Overlays stay inside one row band or one column strip, so they lie
         # flat on the faceplate without slits.
-        cheek = [(48.0, -7.0), (72.0, -7.5), (72.0, -38.0), (60.0, -46.0), (48.0, -36.0)]
+        cheek = [(48.0, -7.0), (72.0, -7.5), (72.0, -23.0), (48.0, -37.0)]   # ends at the jawline
         chin = [(-13.0, -58.5), (13.0, -58.5), (13.0, -45.0), (0.0, -42.5), (-13.0, -45.0)]
         c0, c2 = self.sweep_end + 6.0, self.shell_phis[-1] - 5.0
         c1 = (c0 + c2) / 2
@@ -370,8 +484,8 @@ class Design:
             R0=round(self.R0, 1),
             shell_rows=[round(float(v), 1) for v in self.shell_phis],
             shell_radii=[round(float(v), 1) for v in self.shell_r],
-            face_radii=[round(float(v), 1) for v in self.face_r],
-            face_chord_min=round(self.face_dmin, 1),
+            face_rows=[round(float(v), 1) for v in self.face_phis],
+            face_radii_by_column={f"x={k:.0f}": [round(float(v), 1) for v in r]
+                                  for k, r in zip(self.knots_f, self.face_R)},
             shell_scales=[round(float(v), 3) for v in self.a],
-            face_scales=[round(float(v), 3) for v in self.b],
         )

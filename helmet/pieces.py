@@ -323,6 +323,16 @@ def build_pieces(bodies, start_seam=1):
         for pc in isl_by_name.values():
             pc.holes += _hole_segments(body, pc, unf)
 
+        # paint marks: facets to paint red get a small "RED" in their middle
+        for pc in isl_by_name.values():
+            for f in pc.faces:
+                if m.faces[f].get("paint") == "red":
+                    poly = pc.poly[f]
+                    c = g2.centroid(poly)
+                    if all(g2.point_in_poly(c + d, poly) for d in ((4, 0), (-4, 0), (0, 2), (0, -2))):
+                        pc.labels.append(dict(text="RED", pos=c, angle=0.0, size=2.2, bold=True,
+                                              kind="paint"))
+
 
 
     # printed side is the inside: mirror every piece
@@ -355,6 +365,11 @@ def name_label(pc, max_size=4.2):
     """Put the piece name where it has the most room, sized to fit."""
     from .pdf import text_width
     segs = [(c["a"], c["b"]) for c in pc.cuts] + list(pc.holes)
+    for lb in pc.labels:           # keep clear of paint marks already placed
+        if lb["kind"] == "paint":
+            c = np.asarray(lb["pos"])
+            box = [c + (-5, -2), c + (5, -2), c + (5, 2), c + (-5, 2)]
+            segs += [(box[k], box[(k + 1) % 4]) for k in range(4)]
     k = text_width(pc.name, 1.0, bold=True)
     cands = []
     for f in pc.faces:
@@ -439,23 +454,21 @@ def _hole_segments(body, pc, unf):
     faces = set(pc.faces)
     if body.grid is not None and body.param_holes:
         g = body.grid
-        cell_face = {}
+        piece_face = {}
         for fi, f in enumerate(m.faces):
             if f.get("cell") is not None:
-                cell_face[tuple(f["cell"])] = fi
+                piece_face[tuple(f["cell"]) + (f["tri"],)] = fi
         for poly in body.param_holes:
             pts = g2.densify(poly, 0.4)
             pts = [np.array([p[0], p[1]]) for p in pts]
             for k in range(len(pts)):
                 p, q = pts[k], pts[(k + 1) % len(pts)]
-                for p0, q0 in _split_on_grid(g, p, q):
-                    mid = (p0 + q0) / 2
-                    cell = g.cell_of(*mid)
-                    fi = cell_face.get(cell)
+                for key, p0, q0 in g.split_segment(p, q):
+                    fi = piece_face.get(key)
                     if fi is None or fi not in faces:
                         continue
-                    a3 = g.point(p0[0], p0[1], cell)
-                    b3 = g.point(q0[0], q0[1], cell)
+                    a3 = g.point(p0[0], p0[1], key)
+                    b3 = g.point(q0[0], q0[1], key)
                     segs.append((unf.map(fi, a3), unf.map(fi, b3)))
     for fi, polys in body.plate_holes.items():
         if fi not in faces:
@@ -464,18 +477,6 @@ def _hole_segments(body, pc, unf):
             for k in range(len(poly)):
                 segs.append((unf.map(fi, poly[k]), unf.map(fi, poly[(k + 1) % len(poly)])))
     return segs
-
-
-def _split_on_grid(g, p, q):
-    ts = [0.0, 1.0]
-    for x in g.xs:
-        if (p[0] - x) * (q[0] - x) < 0:
-            ts.append((x - p[0]) / (q[0] - p[0]))
-    for ph in g.phis:
-        if (p[1] - ph) * (q[1] - ph) < 0:
-            ts.append((ph - p[1]) / (q[1] - p[1]))
-    ts = sorted(ts)
-    return [(p + (q - p) * t0, p + (q - p) * t1) for t0, t1 in zip(ts, ts[1:]) if t1 - t0 > 1e-12]
 
 
 # --- flat parts (discs, rings) -------------------------------------------------

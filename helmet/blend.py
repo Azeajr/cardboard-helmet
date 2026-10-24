@@ -28,13 +28,22 @@ def _mat(name, rgba):
     return m
 
 
-def _obj(name, verts, faces, mat, parent=None, coll=None):
+def _obj(name, verts, faces, mat, parent=None, coll=None, face_mats=None):
     me = bpy.data.meshes.new(name)
     me.from_pydata([tuple(v) for v in verts], [], [list(f) for f in faces])
     me.update()
     ob = bpy.data.objects.new(name, me)
     (coll or bpy.context.scene.collection).objects.link(ob)
     ob.data.materials.append(mat)
+    if face_mats:
+        extra = []
+        for fm in face_mats:
+            if fm is not None and fm not in extra:
+                extra.append(fm)
+        for fm in extra:
+            ob.data.materials.append(fm)
+        for poly, fm in zip(ob.data.polygons, face_mats):
+            poly.material_index = 0 if fm is None else 1 + extra.index(fm)
     if parent is not None:
         ob.parent = parent
     return ob
@@ -68,20 +77,13 @@ def _head_mesh(h):
 def _param_patches(d, grid, poly, lift):
     """3D patches of a param-space polygon on a grid surface, lifted outward."""
     verts, faces = [], []
-    dense = g2.densify(poly, 1.0)
-    for i in range(len(grid.xs) - 1):
-        for j in range(len(grid.phis) - 1):
-            x0, x1, p0, p1 = grid.cell_rect(i, j)
-            clip = g2.clip_rect([np.asarray(p, float) for p in dense], x0, x1, p0, p1)
-            if len(clip) < 3 or abs(g2.area(clip)) < 1e-3:
-                continue
-            pts = [grid.point(p[0], p[1], (i, j)) for p in clip]
-            c = np.mean(pts, axis=0)
-            radial = np.array([0.0, c[1] - d.pivot[0], c[2] - d.pivot[1]])
-            radial /= np.linalg.norm(radial)
-            k = len(verts)
-            verts += [tuple(p + radial * lift) for p in pts]
-            faces.append(list(range(k, k + len(pts))))
+    for key, _, pts in grid.clip(g2.densify(poly, 1.0)):
+        c = np.mean(pts, axis=0)
+        radial = np.array([0.0, c[1] - d.pivot[0], c[2] - d.pivot[1]])
+        radial /= np.linalg.norm(radial)
+        k = len(verts)
+        verts += [tuple(np.asarray(p) + radial * lift) for p in pts]
+        faces.append(list(range(k, k + len(pts))))
     return verts, faces
 
 
@@ -130,7 +132,8 @@ def build_scene(d, overlay_defs=None):
 
     fm = d.faceplate
     fverts = [np.asarray(v) - np.array([0.0, d.pivot[0], d.pivot[1]]) for v in fm.verts]
-    face = _obj("Faceplate", fverts, [f["vi"] for f in fm.faces], mats["face"], parent=pivot)
+    face = _obj("Faceplate", fverts, [f["vi"] for f in fm.faces], mats["face"], parent=pivot,
+                face_mats=[mats["shell"] if f.get("paint") == "red" else None for f in fm.faces])
     _solidify(face, P.BOARD)
 
     loc = np.array([0.0, d.pivot[0], d.pivot[1]])

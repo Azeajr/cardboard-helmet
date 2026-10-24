@@ -120,9 +120,10 @@ def piece_layers(d, pieces, open_angle=0.0, with_overlays=False):
             if kind == "shell":
                 base = (0.80, 0.30, 0.26) if "SIDE" in name else (
                     (0.93, 0.62, 0.55) if (f.get("cell") or (0,))[0] % 2 else (0.97, 0.80, 0.74))
+            elif f.get("paint") == "red":
+                base = (0.88, 0.45, 0.38) if (f.get("cell") or (0,))[0] % 2 else (0.93, 0.55, 0.48)
             else:
-                base = (0.86, 0.72, 0.40) if "ARM" in name else (
-                    (0.98, 0.87, 0.55) if (f.get("cell") or (0,))[0] % 2 else (0.99, 0.94, 0.75))
+                base = (0.98, 0.87, 0.55) if (f.get("cell") or (0,))[0] % 2 else (0.99, 0.94, 0.75)
             cols.append(base)
         layers.append((verts, faces, cols, labs))
     return layers
@@ -206,8 +207,9 @@ STEPS = [
      "E-DISC and rings, and screw on the cap. Tighten until the faceplate stays where you put it."),
     ("Overlays and finish",
      "Glue O-BROW, O-CHEEK and O-CHIN onto the faceplate and O-CREST along the back centre strip "
-     "(positions are shown on the next page). Seal with PVA or primer, then paint. Swing the faceplate "
-     "fully open and closed to check nothing rubs."),
+     "(positions are shown on the next page). Seal with PVA or primer. Paint the shell red, the face "
+     "gold, and the faceplate facets marked RED on the stencils red: they form the jaw and cheek "
+     "plates (see the piece map). Swing the faceplate fully open and closed to check nothing rubs."),
 ]
 
 

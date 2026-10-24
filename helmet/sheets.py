@@ -32,7 +32,7 @@ def draw_piece(pg, pc):
     for a, b in pc.holes:
         pg.line(a, b, CUT_W, INK)
     for lb in pc.labels:
-        color = ACCENT if lb["kind"] == "name" else GREY
+        color = {"name": ACCENT, "paint": (0.75, 0.2, 0.15)}.get(lb["kind"], GREY)
         pg.text(lb["text"], lb["pos"], lb["size"], lb["angle"], bold=lb["bold"], color=color)
 
 

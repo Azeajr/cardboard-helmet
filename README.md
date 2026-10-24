@@ -39,7 +39,11 @@ The checks cover the geometry. They don't cover cutting and scoring accuracy, ho
 
 ## How the geometry guarantees assembly
 
-Each surface is built from columns that are scaled copies of one profile around the pivot axis. Neighbouring columns therefore always form flat trapezoids, so cardboard folds into the exact shape. The forehead region the faceplate slides over is an exact circle about the pivot axis, with the faceplate kept outside it. That makes the swing collision-free at any angle by construction; the build then also checks it numerically.
+The shell's columns are scaled copies of one profile around the pivot axis, so neighbouring columns always form flat trapezoids. The forehead region the faceplate slides over is an exact circle about that axis.
+
+Each faceplate column has its own profile, shaped as close to the face as two limits allow: 15 mm from your face, and staying outside the forehead circle while it swings. Where neighbouring columns differ, each panel is split into two triangles along the diagonal that folds outward, so every panel is flat. That freedom is what gives the tapered Iron Man jaw. The faceplate's swing over the shell is then checked numerically at every 0.5°.
+
+The red/gold split follows the Iron Man jawline. The faceplate facets to paint red are marked RED on the stencils.
 
 ## Code map
 

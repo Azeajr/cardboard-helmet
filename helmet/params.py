@@ -25,6 +25,7 @@ BACK_EDGE_ABOVE_NAPE = 40.0  # back edge stops this far above the measured nape
 BOARD = 1.5                  # chipboard / cereal-box board thickness
 SWING_GAP = 1.0              # air gap between faceplate and shell while it swings
 SWING_ANGLE = 80.0           # how far the faceplate flips up
+FACE_SWING_EXTRA = 0.8       # extra radial margin for the triangulated faceplate's swing
 
 # --- Pivot hardware ----------------------------------------------------------
 PIVOT_HOLE = 5.0             # Chicago screw (binding post) diameter
@@ -41,7 +42,7 @@ SHELL_FRONT_EDGE = 10.0              # shell front edge, degrees above the pivot
 SHELL_ROW_STEP = 12.0                # shell fold spacing around the pivot
 FACE_ROWS = (17.0, 7.0, -5.0, -15.0, -24.0, -33.0, -42.0, -51.0, -60.0)
 EYE_ROW = 1                          # faceplate row band holding the eye slots
-SIDE_NOTCH_MARGIN = 4.0              # side plate stays this far behind the jaw line
+SIDE_NOTCH_MARGIN = 1.0              # side plate's jaw lobe stops this far below the faceplate edge
 
 # --- Paper -------------------------------------------------------------------
 PAGE_W, PAGE_H = 215.9, 279.4        # US Letter

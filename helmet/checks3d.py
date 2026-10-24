@@ -213,21 +213,9 @@ def coverage(d, n_az=72, elev=(-15.0, 88.0), n_el=24):
 
 
 def _param_of(d, fi, p):
-    """(x, phi) of point p on faceplate face fi, inverting the cell's bilinear map."""
-    g = d.face_grid
-    i, j = d.faceplate.faces[fi]["cell"]
-    A, B, C, D = g.corners(i, j)
-    s, t = 0.5, 0.5
-    for _ in range(30):
-        q = (1 - s) * (1 - t) * A + s * (1 - t) * B + s * t * C + (1 - s) * t * D
-        ds = -(1 - t) * A + (1 - t) * B + t * C - t * D
-        dt = -(1 - s) * A - s * B + s * C + (1 - s) * D
-        J = np.column_stack([ds, dt])
-        step = np.linalg.lstsq(J, p - q, rcond=None)[0]
-        s, t = s + step[0], t + step[1]
-        if np.linalg.norm(step) < 1e-10:
-            break
-    return g.xs[i] + s * (g.xs[i + 1] - g.xs[i]), g.phis[j] + t * (g.phis[j + 1] - g.phis[j])
+    """(x, phi) of point p on faceplate face fi."""
+    f = d.faceplate.faces[fi]
+    return d.face_grid.invert(tuple(f["cell"]) + (f["tri"],), p)
 
 
 def vision(d):
