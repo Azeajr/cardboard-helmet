@@ -1,0 +1,547 @@
+{
+ "design": {
+  "head_circumference": 549.9,
+  "head_length": 194.0,
+  "head_breadth": 155.0,
+  "head_height": 233.0,
+  "nape_from_tape": [
+   55.8,
+   -187.9
+  ],
+  "back_edge_z": -133.0,
+  "pivot_yz": [
+   9.0,
+   -20.0
+  ],
+  "ear_center_yz": [
+   21.0,
+   -26.0
+  ],
+  "side_x": 96.5,
+  "arm_x": 100.5,
+  "R0": 139.1,
+  "shell_rows": [
+   10.0,
+   21.5,
+   33.0,
+   44.6,
+   56.1,
+   67.6,
+   79.1,
+   90.6,
+   102.1,
+   113.7,
+   125.2,
+   136.7,
+   148.2,
+   159.7,
+   171.2,
+   182.8,
+   194.3,
+   205.8,
+   217.3,
+   228.8,
+   240.3
+  ],
+  "shell_radii": [
+   139.1,
+   139.1,
+   139.1,
+   139.1,
+   139.1,
+   139.1,
+   139.1,
+   139.1,
+   137.0,
+   131.0,
+   127.0,
+   121.3,
+   114.6,
+   108.0,
+   102.9,
+   100.3,
+   98.9,
+   100.0,
+   104.4,
+   113.7,
+   130.7
+  ],
+  "face_radii": [
+   142.6,
+   142.6,
+   144.4,
+   148.5,
+   146.2,
+   147.5,
+   152.6,
+   158.4,
+   158.6
+  ],
+  "face_chord_min": 142.1,
+  "shell_scales": [
+   1.0,
+   0.917,
+   0.726,
+   0.59
+  ],
+  "face_scales": [
+   1.0,
+   1.0,
+   0.842,
+   0.707
+  ]
+ },
+ "checks": [
+  {
+   "name": "Head fit",
+   "detail": "at least 12.0 mm between your head and the inside of the helmet (target 12); 17 mm above the crown",
+   "ok": true
+  },
+  {
+   "name": "Ears",
+   "detail": "5.0 mm from the side plates",
+   "ok": true
+  },
+  {
+   "name": "Face",
+   "detail": "faceplate at least 14.8 mm from your face (target 15; nose 15, chin 16 mm)",
+   "ok": true
+  },
+  {
+   "name": "Faceplate swing",
+   "detail": "tested at 161 angles from closed to 80 deg: no contact; tightest gap 1.0 mm; never closer than 13 mm to your head",
+   "ok": true
+  },
+  {
+   "name": "Vision",
+   "detail": "both eyes look straight out through the slots; each eye sees -15 to 15 deg sideways and 0 to 10 deg up/down",
+   "ok": true
+  },
+  {
+   "name": "No gaps",
+   "detail": "1728 sight lines from inside all hit the helmet",
+   "ok": true
+  },
+  {
+   "name": "Putting it on",
+   "detail": "a collision-free path exists to lower it onto your head (faceplate open)",
+   "ok": true
+  },
+  {
+   "name": "Flat panels",
+   "detail": "every panel flat to 4e-14 mm; normals consistent",
+   "ok": true
+  },
+  {
+   "name": "Pieces match the model",
+   "detail": "every flattened panel within 6e-14 mm of its 3D shape; 236 seams each cut on both sides with matching lengths; 234 glue tabs",
+   "ok": true
+  },
+  {
+   "name": "Pages",
+   "detail": "11 stencil pages; every piece inside the printable area, none touching",
+   "ok": true
+  },
+  {
+   "name": "Printed PDF re-measured",
+   "detail": "4130 cut lines read back from this PDF match the model within 0.002 mm; 100 mm bars measure 100.00 mm",
+   "ok": true
+  }
+ ],
+ "clearance": {
+  "head_to_helmet_min": [
+   11.982540130615234,
+   [
+    4.7148901767173095e-15,
+    96.0,
+    -20.0
+   ]
+  ],
+  "ears_to_shell_min": [
+   5.0,
+   [
+    90.0,
+    2.0,
+    -58.0
+   ]
+  ],
+  "face_to_faceplate_min": [
+   14.841363906860352,
+   [
+    0.0,
+    -118.0,
+    -55.0
+   ]
+  ],
+  "nose_tip_to_faceplate": 14.841363906860352,
+  "pogonion_to_faceplate": 15.80587387084961,
+  "menton_to_faceplate": 15.437788009643555,
+  "mouth_to_faceplate": 27.676380157470703,
+  "crown_to_shell": 16.526506423950195,
+  "forehead_to_shell": 29.402578353881836
+ },
+ "swing": {
+  "intersections": [],
+  "min_gap": 1.0,
+  "min_head": 12.8917236328125,
+  "steps": 161
+ },
+ "vision": {
+  "eye_l": {
+   "straight_ahead": true,
+   "horizontal": [
+    -15,
+    -10,
+    -5,
+    0,
+    5,
+    10,
+    15
+   ],
+   "vertical": [
+    0,
+    5,
+    10
+   ]
+  },
+  "eye_r": {
+   "straight_ahead": true,
+   "horizontal": [
+    -15,
+    -10,
+    -5,
+    0,
+    5,
+    10,
+    15
+   ],
+   "vertical": [
+    0,
+    5,
+    10
+   ]
+  }
+ },
+ "coverage": {
+  "rays": 1728,
+  "missed": 0,
+  "examples": []
+ },
+ "donning": {
+  "ok": true,
+  "final_free": true,
+  "blocked_heights": [],
+  "grid": [
+   56,
+   41
+  ]
+ },
+ "mesh": {
+  "shell": {
+   "faces": 142,
+   "max_planarity_mm": 4.085620730620576e-14,
+   "nonmanifold_edges": 0,
+   "inconsistent_normals": 0
+  },
+  "faceplate": {
+   "faces": 58,
+   "max_planarity_mm": 3.907985046680551e-14,
+   "nonmanifold_edges": 0,
+   "inconsistent_normals": 0
+  }
+ },
+ "unfold": {
+  "face_shape_error_mm": 5.684341886080802e-14,
+  "orientation_errors": 0,
+  "overlaps": [],
+  "seams": 236,
+  "bad_seams": [],
+  "tabs": 234
+ },
+ "pages": {
+  "pages": 11,
+  "out_of_bounds": [],
+  "clashes": []
+ },
+ "pdf": [
+  {
+   "page": 4,
+   "expected": 204,
+   "found": 204,
+   "max_error_mm": 0.001473547665963082,
+   "scale_bar_mm": 100.00009774444442
+  },
+  {
+   "page": 5,
+   "expected": 177,
+   "found": 177,
+   "max_error_mm": 0.0013447142655014233,
+   "scale_bar_mm": 100.00009774444442
+  },
+  {
+   "page": 6,
+   "expected": 561,
+   "found": 561,
+   "max_error_mm": 0.0013779482310245506,
+   "scale_bar_mm": 100.00009774444442
+  },
+  {
+   "page": 7,
+   "expected": 345,
+   "found": 345,
+   "max_error_mm": 0.0012692725506529001,
+   "scale_bar_mm": 100.00009774444442
+  },
+  {
+   "page": 8,
+   "expected": 197,
+   "found": 197,
+   "max_error_mm": 0.0015199932302571995,
+   "scale_bar_mm": 100.00009774444442
+  },
+  {
+   "page": 9,
+   "expected": 154,
+   "found": 154,
+   "max_error_mm": 0.0013914151368261685,
+   "scale_bar_mm": 100.00009774444442
+  },
+  {
+   "page": 10,
+   "expected": 458,
+   "found": 458,
+   "max_error_mm": 0.00142831269460153,
+   "scale_bar_mm": 100.00009774444442
+  },
+  {
+   "page": 11,
+   "expected": 542,
+   "found": 542,
+   "max_error_mm": 0.001310692941120628,
+   "scale_bar_mm": 100.00009774444442
+  },
+  {
+   "page": 12,
+   "expected": 505,
+   "found": 505,
+   "max_error_mm": 0.0013664671254756122,
+   "scale_bar_mm": 100.00009774444442
+  },
+  {
+   "page": 13,
+   "expected": 507,
+   "found": 507,
+   "max_error_mm": 0.0012782150990364727,
+   "scale_bar_mm": 100.00009774444442
+  },
+  {
+   "page": 14,
+   "expected": 480,
+   "found": 480,
+   "max_error_mm": 0.0016375780588466782,
+   "scale_bar_mm": 100.00009774444442
+  }
+ ],
+ "pieces": [
+  {
+   "name": "S-R3-1",
+   "title": "Shell strip R3, part 1 of 2",
+   "count": 1
+  },
+  {
+   "name": "S-R3-2",
+   "title": "Shell strip R3, part 2 of 2",
+   "count": 1
+  },
+  {
+   "name": "S-R2-1",
+   "title": "Shell strip R2, part 1 of 3",
+   "count": 1
+  },
+  {
+   "name": "S-R2-2",
+   "title": "Shell strip R2, part 2 of 3",
+   "count": 1
+  },
+  {
+   "name": "S-R2-3",
+   "title": "Shell strip R2, part 3 of 3",
+   "count": 1
+  },
+  {
+   "name": "S-R1-1",
+   "title": "Shell strip R1, part 1 of 3",
+   "count": 1
+  },
+  {
+   "name": "S-R1-2",
+   "title": "Shell strip R1, part 2 of 3",
+   "count": 1
+  },
+  {
+   "name": "S-R1-3",
+   "title": "Shell strip R1, part 3 of 3",
+   "count": 1
+  },
+  {
+   "name": "S-C-1",
+   "title": "Shell strip C, part 1 of 3",
+   "count": 1
+  },
+  {
+   "name": "S-C-2",
+   "title": "Shell strip C, part 2 of 3",
+   "count": 1
+  },
+  {
+   "name": "S-C-3",
+   "title": "Shell strip C, part 3 of 3",
+   "count": 1
+  },
+  {
+   "name": "S-L1-1",
+   "title": "Shell strip L1, part 1 of 3",
+   "count": 1
+  },
+  {
+   "name": "S-L1-2",
+   "title": "Shell strip L1, part 2 of 3",
+   "count": 1
+  },
+  {
+   "name": "S-L1-3",
+   "title": "Shell strip L1, part 3 of 3",
+   "count": 1
+  },
+  {
+   "name": "S-L2-1",
+   "title": "Shell strip L2, part 1 of 3",
+   "count": 1
+  },
+  {
+   "name": "S-L2-2",
+   "title": "Shell strip L2, part 2 of 3",
+   "count": 1
+  },
+  {
+   "name": "S-L2-3",
+   "title": "Shell strip L2, part 3 of 3",
+   "count": 1
+  },
+  {
+   "name": "S-L3-1",
+   "title": "Shell strip L3, part 1 of 2",
+   "count": 1
+  },
+  {
+   "name": "S-L3-2",
+   "title": "Shell strip L3, part 2 of 2",
+   "count": 1
+  },
+  {
+   "name": "S-SIDE-R",
+   "title": "Shell side plate (right)",
+   "count": 1
+  },
+  {
+   "name": "S-SIDE-L",
+   "title": "Shell side plate (left)",
+   "count": 1
+  },
+  {
+   "name": "F-ARM-R",
+   "title": "Faceplate pivot arm (right)",
+   "count": 1
+  },
+  {
+   "name": "F-ARM-L",
+   "title": "Faceplate pivot arm (left)",
+   "count": 1
+  },
+  {
+   "name": "F-R3",
+   "title": "Faceplate strip R3",
+   "count": 1
+  },
+  {
+   "name": "F-R2",
+   "title": "Faceplate strip R2",
+   "count": 1
+  },
+  {
+   "name": "F-R1",
+   "title": "Faceplate strip R1",
+   "count": 1
+  },
+  {
+   "name": "F-C",
+   "title": "Faceplate strip C",
+   "count": 1
+  },
+  {
+   "name": "F-L1",
+   "title": "Faceplate strip L1",
+   "count": 1
+  },
+  {
+   "name": "F-L2",
+   "title": "Faceplate strip L2",
+   "count": 1
+  },
+  {
+   "name": "F-L3",
+   "title": "Faceplate strip L3",
+   "count": 1
+  },
+  {
+   "name": "O-BROW-L",
+   "title": "Overlay brow-l",
+   "count": 1
+  },
+  {
+   "name": "O-BROW-R",
+   "title": "Overlay brow-r",
+   "count": 1
+  },
+  {
+   "name": "O-CHEEK-L",
+   "title": "Overlay cheek-l",
+   "count": 1
+  },
+  {
+   "name": "O-CHEEK-R",
+   "title": "Overlay cheek-r",
+   "count": 1
+  },
+  {
+   "name": "O-CHIN",
+   "title": "Overlay chin",
+   "count": 1
+  },
+  {
+   "name": "O-CREST-1",
+   "title": "Overlay crest-1",
+   "count": 1
+  },
+  {
+   "name": "O-CREST-2",
+   "title": "Overlay crest-2",
+   "count": 1
+  },
+  {
+   "name": "E-SIDE",
+   "title": "Pivot disc, glued outside each shell side plate",
+   "count": 2
+  },
+  {
+   "name": "E-DISC",
+   "title": "Ear disc, glued outside each faceplate arm",
+   "count": 2
+  },
+  {
+   "name": "E-RING",
+   "title": "Ear ring, two stacked on each ear disc",
+   "count": 4
+  }
+ ]
+}
