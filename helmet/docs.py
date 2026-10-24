@@ -12,6 +12,15 @@ RED = (0.70, 0.16, 0.13)
 GREEN = (0.10, 0.48, 0.22)
 
 
+def pivot_post():
+    """(grip, post): the thickness a Chicago screw clamps (side plate, E-SIDE,
+    washer, arm, E-DISC; the cap sits inside the hollow E-RINGs) and the post
+    length to buy, a whole millimetre at least 0.5 mm shorter so tightening
+    squeezes the board and the faceplate holds its angle."""
+    grip = 4 * P.BOARD + P.PIVOT_WASHER
+    return grip, math.floor(grip - 0.5)
+
+
 def wrap(text, size, width, bold=False):
     lines = []
     for para in text.split("\n"):
@@ -160,12 +169,15 @@ def cover(pdf, d, renders, checks, total, n_sheets):
               "fix the printer setting before cutting anything.")
     yl -= 2.5
     yl = heading(pg, x0, yl, "2. WHAT YOU NEED")
+    grip, post = pivot_post()
     yl = para(pg, x0, yl, colw,
               f"- {P.BOARD} mm chipboard (mat board / sketch-pad backing): {n_sheets} Letter-size pieces\n"
               "- Glue stick or spray adhesive (to stick the printouts on)\n"
               "- PVA or hot glue for the tabs; craft knife, steel ruler, cutting mat\n"
               "- Empty ballpoint pen for scoring\n"
-              f"- 2 Chicago screws (binding posts) {P.PIVOT_HOLE:.0f} mm x 10 mm, 2 thin washers\n"
+              f"- 2 Chicago screws (binding posts), flat heads: {P.PIVOT_HOLE:.0f} mm diameter, "
+              f"{post} mm post (shorter than the {grip:g} mm they clamp, so they can be tightened)\n"
+              f"- 2 washers: {P.PIVOT_HOLE:.0f} mm hole, {P.PIVOT_WASHER:g} mm thick\n"
               "- Optional: thin foam for padding (up to 8 mm keeps the fit)")
     xr = x0 + colw + 8
     yr = heading(pg, xr, y, "3. CHECKED ON THE 3D MODEL BEFORE PRINTING")
@@ -202,8 +214,8 @@ STEPS = [
      "F-L3, then glue the pivot arms F-ARM-R and F-ARM-L onto the outer strips."),
     ("Pivots",
      "Glue an E-SIDE disc outside each side plate and an E-DISC outside each arm, holes aligned; add two "
-     "E-RINGs on each E-DISC. Push a Chicago screw from inside through side plate, E-SIDE, washer, arm, "
-     "E-DISC and rings, and screw on the cap. Tighten until the faceplate stays where you put it."),
+     "E-RINGs on each E-DISC. Push a Chicago screw from inside through side plate, E-SIDE, washer, arm "
+     "and E-DISC, and screw on the cap inside the rings. Tighten until the faceplate stays where you put it."),
     ("Overlays and finish",
      "Glue O-BROW, O-CHEEK and O-CHIN onto the faceplate and O-CREST along the back centre strip "
      "(positions are shown on the next page). Seal with PVA or primer, then paint. Swing the faceplate "
@@ -244,12 +256,24 @@ def instructions(pdf, d, pieces, renders, page_no, total):
     sc = 3.2
     xx = xr + 4
     hgt = 26.0
+    vs = hgt / (2 * P.EAR_DISC_R)                   # vertical scale across the ear disc
+    ring = (P.EAR_DISC_R - P.EAR_RING_IN) * vs
     for name, t, col in layers:
-        pg.rect(xx, yi - hgt, t * sc, hgt, fill=col, width=0.1)
+        if name.startswith("E-RING"):               # hollow: the cap sits in the middle
+            pg.rect(xx, yi - ring, t * sc, ring, fill=col, width=0.1)
+            pg.rect(xx, yi - hgt, t * sc, ring, fill=col, width=0.1)
+        else:
+            pg.rect(xx, yi - hgt, t * sc, hgt, fill=col, width=0.1)
         pg.text(name, (xx + t * sc / 2, yi - hgt - 3.5), 2.1, angle=-60, anchor="start")
         xx += t * sc
-    pg.rect(xr + 1, yi - hgt / 2 - 1.2, xx - xr + 2, 2.4, fill=(0.5, 0.5, 0.52), width=0.1)
-    pg.text("Chicago screw", (xx + 4, yi - hgt / 2), 2.3, anchor="start")
+    grip, post = pivot_post()
+    x_in, x_out = xr + 4, xr + 4 + grip * sc
+    head, hh, steel = 1.2 * sc, 12.0 * vs, (0.5, 0.5, 0.52)
+    pg.rect(x_in, yi - hgt / 2 - 1.2, x_out - x_in, 2.4, fill=steel, width=0.1)
+    pg.rect(x_in - head, yi - hgt / 2 - hh / 2, head, hh, fill=steel, width=0.1)
+    pg.rect(x_out, yi - hgt / 2 - hh / 2, head, hh, fill=steel, width=0.1)
+    pg.text(f"Chicago screw, {post} mm post", (xx + 4, yi - hgt / 2 + 1.6), 2.3, anchor="start")
+    pg.text(f"clamps {grip:g} mm", (xx + 4, yi - hgt / 2 - 1.6), 2.1, anchor="start", color=GREY)
     pg.text("inside (ear)", (xr - 1, yi + 2.5), 2.1, anchor="start", color=GREY)
     pg.text("outside", (xx - 2, yi + 2.5), 2.1, anchor="end", color=GREY)
     sheets.footer(pg, "GUIDE - DO NOT CUT")

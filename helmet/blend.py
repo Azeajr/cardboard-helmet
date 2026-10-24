@@ -157,7 +157,8 @@ def build_scene(d, overlay_defs=None):
             ob = _disc(d, x0, r, P.BOARD, f"Ear {side}{k}", mats["face"], ring_in=rin)
             ob.location = (0.0, -d.pivot[0], -d.pivot[1])
             ob.parent = pivot
-        _disc(d, sgn * (d.arm_x + 3 * P.BOARD) if sgn > 0 else sgn * (d.arm_x + 3 * P.BOARD) - 1.2,
+        # The cap sits on the E-DISC, recessed inside the rings.
+        _disc(d, sgn * (d.arm_x + P.BOARD) if sgn > 0 else sgn * (d.arm_x + P.BOARD) - 1.2,
               6.0, 1.2, f"Chicago screw {side}", mats["hardware"])
     return dict(pivot=pivot, head=head)
 
